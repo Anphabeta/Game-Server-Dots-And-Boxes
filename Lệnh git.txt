@@ -1,0 +1,10 @@
+commit code
+
+git add .
+git commit -m "Nhập thông tin"
+git push
+
+
+pull code
+
+git pull
