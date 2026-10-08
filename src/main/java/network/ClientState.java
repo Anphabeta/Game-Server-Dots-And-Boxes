@@ -55,5 +55,7 @@ public class ClientState{
         writeQueue.addAll(Arrays.asList(writeBuffers));
         
         key.interestOps(key.interestOps() | SelectionKey.OP_WRITE);
+        
+        key.selector().wakeup();
     }
 }

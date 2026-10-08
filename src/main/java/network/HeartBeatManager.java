@@ -12,41 +12,42 @@ Nếu hết 5s, gửi ping
 */
 public class HeartBeatManager {
     private ScheduledExecutorService scheduler;
-    
-    private int missingPings = 0;
-    private ScheduledFuture<?> timeoutTask;
-    
-    private final Runnable task;
-    private final Runnable whenTimeout;
-    private final long time;
 
-    public HeartBeatManager(Runnable task, Runnable whenTimeout, long time) {
-        this.scheduler = Executors.newScheduledThreadPool(1);
-        this.task = task;
-        this.whenTimeout = whenTimeout;
-        this.time = time;
-        this.timeoutTask = scheduler.schedule(()->timeout(), time, TimeUnit.SECONDS);
-    }
+    private final Runnable sendPing;
+    private final Runnable lostConnection;
+    private final long time;
     
-    public void timeout(){
-        task.run();
-        missingPings++;
-        if(missingPings>=3){
-            whenTimeout.run();
-            return;
-        }
-        
-        timeoutTask = scheduler.schedule(()->timeout(), time, TimeUnit.SECONDS);
+    private long lastReceiveMes = System.currentTimeMillis();
+
+    public HeartBeatManager(Runnable sendPing, Runnable lostConnection, long time) {
+        this.scheduler = Executors.newScheduledThreadPool(1);
+        this.sendPing = sendPing;
+        this.lostConnection = lostConnection;
+        this.time = time;
+        startHeartBeat();
     }
     
     public void resetSchedule(){
-        if(timeoutTask!=null){
-            timeoutTask.cancel(false);
+        lastReceiveMes = System.currentTimeMillis();
+    }
+    
+    private void handleTime(){
+        long idle = System.currentTimeMillis() - lastReceiveMes;
+        if(idle>15000){
+            lostConnection.run();
         }
-        
-        missingPings = 0;
-        
-        timeoutTask = scheduler.schedule(()->timeout(), time, TimeUnit.SECONDS);
-        
+        else if(idle>5000){
+            sendPing.run();
+        }
+    }
+    
+    private void startHeartBeat(){
+        scheduler.scheduleAtFixedRate(() -> handleTime(), time, time, TimeUnit.SECONDS);
+    }
+    
+    public void stop(){
+        if(scheduler!=null && !scheduler.isShutdown()){
+            scheduler.shutdownNow();
+        }
     }
 }

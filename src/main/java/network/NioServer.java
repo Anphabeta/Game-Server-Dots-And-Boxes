@@ -8,9 +8,8 @@ import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
+import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * Vấn đề đầu tiên của NIO Server là connection management. 
@@ -18,18 +17,11 @@ import java.util.logging.Logger;
  * Nó có các nhiệm vụ:
  */
 public class NioServer {
-
-    private Thread networkThread;
-    private static boolean connected;
-    
-    private HeartBeatManager heartBeatManager;
-    
-    
     private static int sessionId = -1;
     
-    // ---------------------------------------
-    private final int port;    
+    public ArrayList<ClientState> clientStateList = new ArrayList<>();
     
+    // ---------------------------------------
     private static ServerSocketChannel server;
     private static Selector selector;
     private Decoder decoder;
@@ -37,7 +29,6 @@ public class NioServer {
     
     
     public NioServer(int port) {
-        this.port = port;
         server = createServerSocket(port);
         selector = createSelector();
     }
@@ -73,6 +64,7 @@ public class NioServer {
         }
     }
     
+    
     public void listenSocket() throws IOException{
         while(true){
             selector.select();
@@ -88,12 +80,13 @@ public class NioServer {
                     client.configureBlocking(false);
                     SelectionKey newKey = client.register(selector, SelectionKey.OP_READ);
                     
-                    newKey.attach(new ClientState(newKey, decoder));
+                    ClientState clientState = new ClientState(newKey, decoder);
+                    newKey.attach(clientState);
+                    clientStateList.add(clientState);
                 }
                 
                 if(key.isReadable()){
                     ClientState state = (ClientState) key.attachment();
-                    
                     readClient(key, state);
                 }
                 
@@ -119,6 +112,7 @@ public class NioServer {
 
                     if(n==-1){
                         client.close();
+                        clientStateList.remove(state); 
                         key.cancel();
                         return;
                     }
@@ -140,6 +134,7 @@ public class NioServer {
 
                 if(n==-1){
                     client.close();
+                    clientStateList.remove(state);                    
                     key.cancel();
                     return;                
                 }
@@ -154,6 +149,7 @@ public class NioServer {
             state.receivedFrame = null;            
         } catch (IOException e) {
             System.out.println("mot client da ngat ket noi");
+            clientStateList.remove(state); 
             key.cancel();
             try {
                 client.close();
@@ -171,6 +167,7 @@ public class NioServer {
             while(!state.writeQueue.isEmpty()){
                 ByteBuffer currentBuffer = state.writeQueue.peek();
                 
+//                System.out.println("Da gui client");
                 client.write(currentBuffer);
                 
                 if(currentBuffer.hasRemaining()){
@@ -183,6 +180,7 @@ public class NioServer {
             key.interestOps(key.interestOps() & ~SelectionKey.OP_WRITE);        
         } catch (Exception e) {
             e.printStackTrace();
+            clientStateList.remove(state);
             key.cancel();
             try {
                 client.close();

@@ -4,8 +4,6 @@ import controller.MasterController;
 import dao.MatchDAO;
 import dao.UserDAO;
 import java.io.IOException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import network.NioServer;
 import request.Decoder;
 import request.Encoder;
@@ -18,9 +16,12 @@ public class MainStart {
     private static final UserDAO userDAO = new UserDAO();
     private static final MatchDAO matchDAO = new MatchDAO();
     
+    private static final Comunication comunication = new Comunication(encoder);
+    
     public static void asignDependency(){
         nioServer.setDecoder(decoder);
         decoder.setController(controller);
+        encoder.setNetwork(nioServer);
         controller.setEncoder(encoder);
         controller.setMatchDAO(matchDAO);
         controller.setUserDAO(userDAO);
@@ -28,6 +29,8 @@ public class MainStart {
     
     public static void run(){
         try {
+            comunication.start();
+            
             nioServer.listenSocket();
         } catch (IOException ex) {
             ex.printStackTrace();
