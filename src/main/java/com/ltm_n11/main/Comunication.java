@@ -1,13 +1,15 @@
 package com.ltm_n11.main;
 
 import java.util.Scanner;
-import network.NioServer;
+import request.Decoder;
 import request.Encoder;
 
 public class Comunication extends Thread{
+    private final Decoder decoder;
     private final Encoder encoder;
 
-    public Comunication(Encoder encoder) {
+    public Comunication(Decoder decoder, Encoder encoder) {
+        this.decoder = decoder;
         this.encoder = encoder;
     }
 
@@ -23,7 +25,13 @@ public class Comunication extends Thread{
                 break;
             }
             
-            encoder.chatBroadcast(send);
+            if(send.split(",,")[0].equals("CHAT_BROADCAST")){
+                encoder.chatBroadcast(send.split(",,")[1]);
+            }
+            else{
+                decoder.readMessage(null, send, -1);                
+            }
+
         }
     }
         

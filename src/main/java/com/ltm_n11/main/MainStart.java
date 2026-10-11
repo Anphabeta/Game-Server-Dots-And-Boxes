@@ -13,18 +13,14 @@ public class MainStart {
     private static final Decoder decoder = new Decoder();
     private static final Encoder encoder = new Encoder();
     private static final MasterController controller = new MasterController();
-    private static final UserDAO userDAO = new UserDAO();
-    private static final MatchDAO matchDAO = new MatchDAO();
     
-    private static final Comunication comunication = new Comunication(encoder);
+    private static final Comunication comunication = new Comunication(decoder, encoder);
     
     public static void asignDependency(){
         nioServer.setDecoder(decoder);
         decoder.setController(controller);
         encoder.setNetwork(nioServer);
         controller.setEncoder(encoder);
-        controller.setMatchDAO(matchDAO);
-        controller.setUserDAO(userDAO);
     }
     
     public static void run(){

@@ -48,11 +48,11 @@ public class DBConnection {
                     + INITIAL_POOL_SIZE + " connections");
 
         } catch (ClassNotFoundException e) {
-            System.err.println("MySQL JDBC Driver not found!");
-            e.printStackTrace();
+            System.err.println("Chua cai MySQL JDBC driver!");
+//            e.printStackTrace();
         } catch (SQLException e) {
-            System.err.println("Error initializing connection pool!");
-            e.printStackTrace();
+            System.err.println("Chua bat MySQL server!");
+//            e.printStackTrace();
         }
     }
 

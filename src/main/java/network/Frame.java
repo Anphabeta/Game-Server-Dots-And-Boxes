@@ -69,5 +69,9 @@ public class Frame{
     public short getNumPart() {
         return numPart;
     }
+
+    public int getSessionId() {
+        return sessionId;
+    }
         
 }

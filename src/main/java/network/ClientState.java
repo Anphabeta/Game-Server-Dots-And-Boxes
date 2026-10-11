@@ -10,7 +10,7 @@ import request.Decoder;
 public class ClientState{
     public Message message = new Message();
     private final Decoder decoder;
-    private final SelectionKey key;
+    private SelectionKey key;
     
     public ByteBuffer receivedLengthBuffer = ByteBuffer.allocate(4);
     public ByteBuffer receivedFrame;
@@ -20,6 +20,9 @@ public class ClientState{
     public ClientState(SelectionKey key, Decoder decoder) {
         this.key = key;
         this.decoder = decoder;
+    }
+    public void setKey(SelectionKey newKey){
+        this.key = newKey;
     }
     
     public void setFrame(int length){
@@ -31,6 +34,11 @@ public class ClientState{
     }
     
     public void mergeFrame(ByteBuffer frame){
+        if(message.isWrongSessionId(frame)){
+            System.out.println("Wrong session id");
+            return;
+        }
+        
         if(message.isEmptyFrameList()){
             message.countDown = getNumPartMessage(frame)-1;
             message.addFrame(frame);
@@ -45,8 +53,12 @@ public class ClientState{
             message.clearFrameList();
             
 //            System.out.println(rawMessage);
-            decoder.readMessage(key,rawMessage);
+            decoder.readMessage(key,rawMessage,message.getSessionId());
         }
+    }
+    
+    public void setSessionId(int sessionId){
+        message.setSessionId(sessionId);
     }
     
     public void writeFrame(String rawMessage){

@@ -141,7 +141,7 @@ public class UserDAO {
 
         } catch (SQLException e) {
             System.err.println("Error in createUser: " + e.getMessage());
-            e.printStackTrace();
+            System.out.println("Chua bat MySQL Server!");
         } finally {
             closeResources(null, ps, conn);
         }

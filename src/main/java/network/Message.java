@@ -4,7 +4,6 @@ import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
 
 /**
  *
@@ -12,7 +11,6 @@ import java.util.HashMap;
  */
 public class Message {
     private static int messageId = -1;
-    private String rawMessage;
     private int sessionId = -1;
     private final short MAX_PAYLOAD = 128;
     private final ArrayList<Frame> frameList = new ArrayList<>();
@@ -21,6 +19,9 @@ public class Message {
     
     public void setSessionId(int id){
         sessionId = id;
+    }
+    public int getSessionId(){
+        return sessionId;
     }
     
     public static void increaseMessageId(){
@@ -66,6 +67,14 @@ public class Message {
         }
         
         return frames;
+    }
+    
+    public boolean isWrongSessionId(ByteBuffer buffer){
+        Frame frame = new Frame(buffer);
+        buffer.rewind();
+        System.out.print("Current id: "+sessionId + "  -  ");
+        System.out.println("Frame id: "+ frame.getSessionId());
+        return !(frame.getSessionId() == sessionId || frame.getSessionId() == -1);
     }
     
     public String unwrapMessage(){
