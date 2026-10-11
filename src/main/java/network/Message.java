@@ -72,8 +72,8 @@ public class Message {
     public boolean isWrongSessionId(ByteBuffer buffer){
         Frame frame = new Frame(buffer);
         buffer.rewind();
-        System.out.print("Current id: "+sessionId + "  -  ");
-        System.out.println("Frame id: "+ frame.getSessionId());
+//        System.out.print("Current id: "+sessionId + "  -  ");
+//        System.out.println("Frame id: "+ frame.getSessionId());
         return !(frame.getSessionId() == sessionId || frame.getSessionId() == -1);
     }
     

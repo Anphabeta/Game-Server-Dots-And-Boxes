@@ -1,7 +1,6 @@
 package request;
 
 import controller.MasterController;
-import controller.UserRepresentative;
 import java.nio.channels.SelectionKey;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -41,13 +40,18 @@ public class Decoder {
         globalMap.put("REGISTER", pair->register(pair));
         globalMap.put("LOGOUT", pair->logout(pair));
         globalMap.put("ATTACH_REQUEST", pair->attachRequest(pair));
+        globalMap.put("INVITE", pair->invite(pair));
 //        globalMap.put(key, value);
 //        globalMap.put(key, value);
-        globalMap.put("CHAT_BROADCAST", pair->chatBroadcast(pair));        
+        globalMap.put("CHAT_BROADCAST", pair->chatBroadcast(pair));  
+        globalMap.put("CHAT_INDVD", pair->chatIndividual(pair));
     }
     
     private void initIndividualFunctionMap(){
         individualMap.add("GET_USER_DETAIL");        
+        individualMap.add("JOIN_QUICK_MATCH");
+        individualMap.add("INVITE");
+        individualMap.add("CREATE_CUSTOM_ROOM");
     }
 
     public Decoder(){
@@ -131,11 +135,26 @@ public class Decoder {
         }
     }
     
+    private void invite(Pair pair){
+        
+    }
+    
     
     // Other request
     
     private void chatBroadcast(Pair pair){
         controller.chatBroadcast(pair.params);
+    }
+    
+    private void chatIndividual(Pair pair){
+        try {
+            String[] parameter = pair.params.split(";");
+            int desUserId = Integer.parseInt(parameter[0]);
+            String message = parameter[1];
+            controller.chatIndividual(pair.sessionId, desUserId, message);
+        } catch (Exception e) {
+            System.out.println("Invalid params");
+        }
     }
     
     private void showInvalid(Pair pair){

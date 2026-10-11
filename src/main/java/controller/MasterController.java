@@ -118,6 +118,20 @@ public class MasterController {
         }
     }
     
+    public void chatIndividual(int srcSessionId, int desUserId, String message){
+        UserRepresentative srcRepst = representativeManager.getBySessionId(srcSessionId);
+        if(representativeManager.containsUserIdKey(desUserId)){
+            UserRepresentative desRepst = representativeManager.getByUserId(desUserId);
+            int srcUserId = srcRepst.user.getUserId();
+            desRepst.receiveChat(message, srcUserId);
+        }
+        else{
+            srcRepst.unableToChat("USER_OFFLINE");
+        }
+    }
+    
+    
+    
     
     // Dispatch individual
     

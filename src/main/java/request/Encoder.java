@@ -55,8 +55,4 @@ public class Encoder {
         network.clientStateList.add(newState);
         System.out.println("Replaced temp client state before attach new one");
     }
-    
-    public void replyAttach(ClientState state, String status){
-        state.writeFrame(String.format("REPLY_ATTACH,,%s", status));
-    }
 }

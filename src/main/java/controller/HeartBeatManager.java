@@ -23,7 +23,7 @@ public class HeartBeatManager {
     }
     
     public void resetSchedule(){
-        System.out.println("Reset schedule");
+//        System.out.println("Reset schedule");
         lastPing = System.currentTimeMillis();
     }
     

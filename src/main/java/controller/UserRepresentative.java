@@ -58,9 +58,24 @@ public class UserRepresentative {
         heartBeatManager.stop();
     }
     
+    
+    // WRITE FLOW
+    
     public void replyAttach(){
-        encoder.replyAttach(state, "ATTACH_SUCCESS");
+        String status = "ATTACH_SUCCESS";
+        state.writeFrame(String.format("REPLY_ATTACH,,", status));
     }
+    
+    public void receiveChat(String message, int orgUserId){
+        state.writeFrame(String.format("RECEIVE_CHAT,,%d;%s", orgUserId, message));
+    }
+    
+    public void unableToChat(String status){
+        state.writeFrame(String.format("UNABLE_TO_CHAT,,%s", status));
+    }
+    
+    
+    // READ FLOW
     
     public void readMessage(String opCode, String params){
         Consumer<String> handler = individualMap.get(opCode);
@@ -81,4 +96,6 @@ public class UserRepresentative {
         );
         encoder.returnUserDetail(state, userDetail);
     }
+    
+
 }
