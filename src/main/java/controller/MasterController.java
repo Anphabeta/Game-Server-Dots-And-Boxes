@@ -77,7 +77,7 @@ public class MasterController {
             encoder.replyLogin(key, loginStatus);
             encoder.setClientSessionId(key, maxSessionId);
             
-            user.setStatus("online");
+            user.setStatus(User.STATUS.ONLINE);
             ClientState state = (ClientState) key.attachment();
             addRepresentative(user, maxSessionId, state);         
             state.setSessionId(maxSessionId);

@@ -18,6 +18,12 @@ public class User implements Serializable {
     private String status; // online, offline, ingame
     private Timestamp createdAt;
     private Timestamp updatedAt;
+    
+    public class STATUS{
+        public static final String ONLINE = "online";
+        public static final String OFFLINE = "offline";
+        public static final String INGAME = "ingame";
+    }
 
     // Constructors
     public User() {

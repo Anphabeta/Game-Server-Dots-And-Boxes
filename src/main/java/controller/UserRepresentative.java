@@ -2,8 +2,10 @@ package controller;
 
 import dao.MatchDAO;
 import dao.UserDAO;
+import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Queue;
 import java.util.function.Consumer;
 import model.User;
 import network.ClientState;
@@ -21,6 +23,7 @@ public class UserRepresentative {
     private Encoder encoder;
     
     private static final Map<String, Consumer<String>> individualMap = new HashMap<>();
+    private static final Queue<UserRepresentative> quickMatchQueue = new ArrayDeque<>();
     
     private void initIndividualFunctionMap(){
         individualMap.put("GET_USER_DETAIL", (params)->getUserDetail(params));
@@ -97,5 +100,9 @@ public class UserRepresentative {
         encoder.returnUserDetail(state, userDetail);
     }
     
-
+    private void joinQuickMatch(String params){
+        // set trạng thái ingame
+        // cho vào hàng đợi
+        // nếu đủ 2 người xử lý hàm tạo game
+    }
 }
