@@ -22,13 +22,14 @@ public class UserRepresentative {
     private UserDAO userDAO;
     private MatchDAO matchDAO;
     private Encoder encoder;
+    private MatchMakingManager matchMakingManager;
     
     private static final Map<String, BiConsumer<UserRepresentative, String>> individualMap = new HashMap<>();
-    private static final Queue<UserRepresentative> quickMatchQueue = new ArrayDeque<>();
     
     static {
         individualMap.put("GET_USER_DETAIL", UserRepresentative::getUserDetail);
         individualMap.put("JOIN_QUICK_MATCH", UserRepresentative::joinQuickMatch);
+        individualMap.put("CANCEL_QUICK_MATCH", UserRepresentative::cancelQuickMatch);
     }
 
     public UserRepresentative(int sessionId, User user, ClientState state, Consumer<Integer> deleteItself) {
@@ -47,9 +48,16 @@ public class UserRepresentative {
     public void setEncoder(Encoder encoder){
         this.encoder = encoder;
     }
+
+    public void setMatchMakingManager(MatchMakingManager matchMakingManager){
+        this.matchMakingManager = matchMakingManager;
+    }
     
     private void deleteRepresentative(){
         heartBeatManager.stop();
+        if (matchMakingManager != null) {
+            matchMakingManager.removePlayer(this);
+        }
         deleteItself.accept(sessionId);
         System.out.println("Representative delete itself");
     }
@@ -98,12 +106,55 @@ public class UserRepresentative {
                 user.getRanking(),
                 user.getStatus()
         );
-        encoder.returnUserDetail(state, userDetail);
+        state.writeFrame(String.format("RETURN_USER_DETAIL,,%s", userDetail));
     }
     
-    private void joinQuickMatch(String params){
-        // set trạng thái ingame
-        // cho vào hàng đợi
-        // nếu đủ 2 người xử lý hàm tạo game
+    private void joinQuickMatch(String params) {
+        if (matchMakingManager == null) {
+            System.out.println("MatchMakingManager is null for session " + sessionId);
+            return;
+        }
+
+        // 1. Kiểm tra trạng thái hiện tại (chỉ cho phép khi đang ONLINE)
+        if (!User.STATUS.ONLINE.equalsIgnoreCase(user.getStatus())) {
+            if (encoder != null) {
+                encoder.replyJoinQuickMatch(state, "ALREADY_BUSY");
+            }
+            return;
+        }
+
+        // 2. Chuyển trạng thái sang tìm trận
+        user.setStatus(User.STATUS.QUEUING);
+
+        // 3. Đưa vào MatchMakingManager
+        boolean added = matchMakingManager.addPlayer(this);
+        if (added) {
+            if (encoder != null) {
+                encoder.replyJoinQuickMatch(state, "SUCCESS");
+            }
+        } else {
+            user.setStatus(User.STATUS.ONLINE);
+            if (encoder != null) {
+                encoder.replyJoinQuickMatch(state, "ALREADY_IN_QUEUE");
+            }
+        }
+    }
+
+    private void cancelQuickMatch(String params) {
+        if (matchMakingManager == null) {
+            return;
+        }
+
+        if (User.STATUS.QUEUING.equalsIgnoreCase(user.getStatus())) {
+            matchMakingManager.removePlayer(this);
+            user.setStatus(User.STATUS.ONLINE);
+            if (encoder != null) {
+                encoder.replyCancelQuickMatch(state, "SUCCESS");
+            }
+        } else {
+            if (encoder != null) {
+                encoder.replyCancelQuickMatch(state, "NOT_IN_QUEUE");
+            }
+        }
     }
 }

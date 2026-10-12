@@ -39,20 +39,31 @@ public class Encoder {
     }
     
     public void chatBroadcast(String message){
-        System.out.println(network.clientStateList.size());
+//        System.out.println(network.clientStateList.size());
         for(ClientState state: network.clientStateList){
             state.writeFrame(String.format("CHAT_BROADCAST,,%s", message));
         }
     }
-
-    public void returnUserDetail(ClientState state, String userDetail){
-        state.writeFrame(String.format("RETURN_USER_DETAIL,,%s", userDetail));
-    }
-    
     
     public void replaceClientState(ClientState oldState, ClientState newState){
         network.clientStateList.remove(oldState);
         network.clientStateList.add(newState);
         System.out.println("Replaced temp client state before attach new one");
+    }
+
+    public void returnUserDetail(ClientState state, String userDetail) {
+        state.writeFrame(String.format("RETURN_USER_DETAIL,,%s", userDetail));
+    }
+
+    public void replyJoinQuickMatch(ClientState state, String status) {
+        state.writeFrame(String.format("REPLY_JOIN_QUICK_MATCH,,%s", status));
+    }
+
+    public void replyCancelQuickMatch(ClientState state, String status) {
+        state.writeFrame(String.format("REPLY_CANCEL_QUICK_MATCH,,%s", status));
+    }
+
+    public void notifyMatchFound(ClientState state, String matchData) {
+        state.writeFrame(String.format("MATCH_FOUND,,%s", matchData));
     }
 }

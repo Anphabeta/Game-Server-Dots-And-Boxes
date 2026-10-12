@@ -50,6 +50,7 @@ public class Decoder {
     private void initIndividualFunctionMap(){
         individualMap.add("GET_USER_DETAIL");        
         individualMap.add("JOIN_QUICK_MATCH");
+        individualMap.add("CANCEL_QUICK_MATCH");
         individualMap.add("INVITE");
         individualMap.add("CREATE_CUSTOM_ROOM");
     }

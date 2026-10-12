@@ -25,6 +25,14 @@ public class ClientState{
         this.key = newKey;
     }
     
+    public SelectionKey getKey() {
+        return this.key;
+    }
+
+    public boolean isValid() {
+        return this.key != null && this.key.isValid();
+    }
+    
     public void setFrame(int length){
         receivedFrame = ByteBuffer.allocate(12+length);
     }

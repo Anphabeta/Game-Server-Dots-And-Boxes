@@ -23,6 +23,7 @@ public class User implements Serializable {
         public static final String ONLINE = "online";
         public static final String OFFLINE = "offline";
         public static final String INGAME = "ingame";
+        public static final String QUEUING = "queuing";
     }
 
     // Constructors
@@ -125,6 +126,10 @@ public class User implements Serializable {
 
     public boolean isOffline() {
         return "offline".equalsIgnoreCase(status);
+    }
+
+    public boolean isQueuing() {
+        return "queuing".equalsIgnoreCase(status);
     }
 
     @Override

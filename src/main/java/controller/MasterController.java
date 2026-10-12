@@ -10,6 +10,7 @@ import request.Encoder;
 public class MasterController {
     private static int maxSessionId = 1;
     public final RepresentativeManager representativeManager = new RepresentativeManager();
+    public final MatchMakingManager matchMakingManager = new MatchMakingManager();
     private Encoder encoder;
     
     private final UserDAO userDAO = new UserDAO();
@@ -18,6 +19,7 @@ public class MasterController {
 
     public void setEncoder(Encoder encoder) {
         this.encoder = encoder;
+        this.matchMakingManager.setEncoder(encoder);
     }
 
     // General function
@@ -26,10 +28,15 @@ public class MasterController {
         UserRepresentative representative = new UserRepresentative(sessionId, user, state, (id)->removeRepresentative(id));
         representative.setDAO(userDAO, matchDAO);
         representative.setEncoder(encoder);
+        representative.setMatchMakingManager(matchMakingManager);
         representativeManager.put(sessionId, representative);
     }
     
     private void removeRepresentative(int sessionId){
+        UserRepresentative repst = representativeManager.getBySessionId(sessionId);
+        if (repst != null) {
+            matchMakingManager.removePlayer(repst);
+        }
         representativeManager.removeBySessionId(sessionId);
         System.out.println(representativeManager.size());
     }
@@ -92,6 +99,10 @@ public class MasterController {
     }
     
     public void logout(SelectionKey key, int sessionId){
+        UserRepresentative repst = representativeManager.getBySessionId(sessionId);
+        if (repst != null) {
+            matchMakingManager.removePlayer(repst);
+        }
         representativeManager.removeBySessionId(sessionId);
         System.out.println("Removed representative");
         encoder.replyLogout(key);
