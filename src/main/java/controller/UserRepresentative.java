@@ -6,6 +6,7 @@ import java.util.ArrayDeque;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Queue;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import model.User;
 import network.ClientState;
@@ -22,15 +23,15 @@ public class UserRepresentative {
     private MatchDAO matchDAO;
     private Encoder encoder;
     
-    private static final Map<String, Consumer<String>> individualMap = new HashMap<>();
+    private static final Map<String, BiConsumer<UserRepresentative, String>> individualMap = new HashMap<>();
     private static final Queue<UserRepresentative> quickMatchQueue = new ArrayDeque<>();
     
-    private void initIndividualFunctionMap(){
-        individualMap.put("GET_USER_DETAIL", (params)->getUserDetail(params));
+    static {
+        individualMap.put("GET_USER_DETAIL", UserRepresentative::getUserDetail);
+        individualMap.put("JOIN_QUICK_MATCH", UserRepresentative::joinQuickMatch);
     }
 
     public UserRepresentative(int sessionId, User user, ClientState state, Consumer<Integer> deleteItself) {
-        initIndividualFunctionMap();
         this.sessionId = sessionId;
         this.user = user;
         this.state = state;
@@ -81,9 +82,9 @@ public class UserRepresentative {
     // READ FLOW
     
     public void readMessage(String opCode, String params){
-        Consumer<String> handler = individualMap.get(opCode);
+        BiConsumer<UserRepresentative, String> handler = individualMap.get(opCode);
         if(handler!=null){
-            handler.accept(params);            
+            handler.accept(this, params);            
         }
         else{
             System.out.println("Handler doesn't exist in Presentative");
