@@ -2,6 +2,7 @@ package controller;
 
 import dao.MatchDAO;
 import dao.UserDAO;
+import game.RoomManager;
 import java.nio.channels.SelectionKey;
 import model.User;
 import network.ClientState;
@@ -11,6 +12,7 @@ public class MasterController {
     private static int maxSessionId = 1;
     public final RepresentativeManager representativeManager = new RepresentativeManager();
     public final MatchMakingManager matchMakingManager = new MatchMakingManager();
+    public final RoomManager roomManager = RoomManager.getInstance();
     private Encoder encoder;
     
     private final UserDAO userDAO = new UserDAO();
@@ -20,6 +22,8 @@ public class MasterController {
     public void setEncoder(Encoder encoder) {
         this.encoder = encoder;
         this.matchMakingManager.setEncoder(encoder);
+        this.matchMakingManager.setRoomManager(roomManager);
+        this.matchMakingManager.setDAO(userDAO, matchDAO);
     }
 
     // General function
@@ -29,6 +33,7 @@ public class MasterController {
         representative.setDAO(userDAO, matchDAO);
         representative.setEncoder(encoder);
         representative.setMatchMakingManager(matchMakingManager);
+        representative.setRoomManager(roomManager);
         representativeManager.put(sessionId, representative);
     }
     
@@ -89,7 +94,9 @@ public class MasterController {
             addRepresentative(user, maxSessionId, state);         
             state.setSessionId(maxSessionId);
 
-            maxSessionId++;             
+            maxSessionId++;
+            
+            System.out.println("User "+user.getUsername()+" logged in");
         }
     }
     
@@ -101,17 +108,18 @@ public class MasterController {
     public void logout(SelectionKey key, int sessionId){
         UserRepresentative repst = representativeManager.getBySessionId(sessionId);
         if (repst != null) {
+            repst.shutdownSchedule();
             matchMakingManager.removePlayer(repst);
+            if (repst.getCurrentRoom() != null && !repst.getCurrentRoom().isFinished()) {
+                repst.getCurrentRoom().handleDisconnect(repst.user.getUserId());
+            }
         }
+        userDAO.updateUserStatus(repst != null ? repst.user.getUserId() : -1, User.STATUS.OFFLINE);
         representativeManager.removeBySessionId(sessionId);
         System.out.println("Removed representative");
         encoder.replyLogout(key);
         ((ClientState) key.attachment()).setSessionId(-1);
         System.out.println("Set sessionId -1");
-    }
-    
-    public void chatBroadcast(String message){
-        encoder.chatBroadcast(message);
     }
     
     public void attachRequest(SelectionKey key, int sessionId){

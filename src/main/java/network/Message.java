@@ -12,7 +12,7 @@ import java.util.Arrays;
 public class Message {
     private static int messageId = -1;
     private int sessionId = -1;
-    private final short MAX_PAYLOAD = 128;
+    private final short MAX_PAYLOAD = 4096;
     private final ArrayList<Frame> frameList = new ArrayList<>();
     
     public int countDown = -1;

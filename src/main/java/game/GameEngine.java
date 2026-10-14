@@ -50,12 +50,12 @@ public class GameEngine implements Serializable {
      */
     public synchronized MoveResult makeMove(int playerId, int r1, int c1, int r2, int c2) {
         if (gameOver) {
-            return MoveResult.fail("Ván đấu đã kết thúc");
+            return MoveResult.fail("MATCH_ENDED");
         }
 
         // 1. Kiểm tra có đúng lượt của người chơi hay không
         if (currentTurn.getId() != playerId) {
-            return MoveResult.fail("Chưa đến lượt của bạn");
+            return MoveResult.fail("NOT_YOUR_TURN");
         }
 
         Dot d1 = board.getDot(r1, c1);
