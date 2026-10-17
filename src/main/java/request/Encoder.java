@@ -63,6 +63,14 @@ public class Encoder {
         state.writeFrame(String.format("REPLY_JOIN_QUICK_MATCH,,%s", status));
     }
 
+    public void replyJoinQuickMatch(ClientState state, String status, String boardSize) {
+        if (boardSize != null && !boardSize.isEmpty()) {
+            state.writeFrame(String.format("REPLY_JOIN_QUICK_MATCH,,%s;%s", status, boardSize));
+        } else {
+            replyJoinQuickMatch(state, status);
+        }
+    }
+
     public void replyCancelQuickMatch(ClientState state, String status) {
         state.writeFrame(String.format("REPLY_CANCEL_QUICK_MATCH,,%s", status));
     }

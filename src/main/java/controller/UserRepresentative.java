@@ -168,11 +168,13 @@ public class UserRepresentative {
         // 2. Chuyển trạng thái sang tìm trận
         user.setStatus(User.STATUS.QUEUING);
 
-        // 3. Đưa vào MatchMakingManager
-        boolean added = matchMakingManager.addPlayer(this);
+        // 3. Đưa vào MatchMakingManager với mode được chọn từ client (hoặc ANY nếu rỗng)
+        String requestedMode = (params == null || params.trim().isEmpty()) ? MatchMakingManager.MODE_ANY : params.trim();
+        boolean added = matchMakingManager.addPlayer(this, requestedMode);
         if (added) {
             if (encoder != null) {
-                encoder.replyJoinQuickMatch(state, "SUCCESS");
+                String assignedSize = matchMakingManager.getAssignedSize(this);
+                encoder.replyJoinQuickMatch(state, "SUCCESS", assignedSize);
             }
         } else {
             user.setStatus(User.STATUS.ONLINE);
