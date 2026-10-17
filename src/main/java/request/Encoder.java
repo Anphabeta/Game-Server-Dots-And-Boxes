@@ -6,6 +6,8 @@ import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import game.Box;
 import game.MoveResult;
+import java.util.List;
+import model.User;
 import network.ClientState;
 import network.NioServer;
 
@@ -127,5 +129,45 @@ public class Encoder {
         if (state != null && state.isValid()) {
             state.writeFrame(String.format("OPPONENT_DISCONNECT,,%d", disconnectedUserId));
         }
+    }
+
+    public void replyUsersAvailableList(ClientState state, List<User> onlineUserList, List<User> ingameUserList) {
+        StringBuilder sb = new StringBuilder("REPLY_USERS_AVAILABLE_LIST,,");
+        
+        for(User user: onlineUserList){
+            sb.append(String.format("%d:%s:%s:%s|", 
+                    user.getUserId(),
+                    user.getUsername(),
+                    user.getDisplayName(),
+                    user.getStatus()
+            ));
+        }
+        sb.setLength(sb.length()-1);
+        sb.append(";");
+        
+        for(User user: ingameUserList){
+            sb.append(String.format("%d:%s:%s:%s|", 
+                    user.getUserId(),
+                    user.getUsername(),
+                    user.getDisplayName(),
+                    user.getStatus()
+            ));
+        }
+        sb.setLength(sb.length()-1);
+        
+        System.out.println(sb.toString());
+        state.writeFrame(sb.toString());
+    }
+
+    public void replyInvitation(ClientState state, String replyState) {
+        state.writeFrame(String.format("INVITED,,%s", replyState));
+    }
+
+    public void sendInvitation(ClientState state, int userId, String displayName) {
+        state.writeFrame(String.format("INVITED_BY,,%d;%s", userId, displayName));
+    }
+
+    public void responseInvitation(ClientState state, String status) {
+        state.writeFrame(String.format("RESPONSE_INVITATION,,%s", status));
     }
 }

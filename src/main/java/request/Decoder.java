@@ -41,6 +41,7 @@ public class Decoder {
         globalMap.put("LOGOUT", pair->logout(pair));
         globalMap.put("ATTACH_REQUEST", pair->attachRequest(pair));
         globalMap.put("INVITE", pair->invite(pair));
+        globalMap.put("RESPONSE_INVITATION", pair->responseInvitation(pair));
 //        globalMap.put(key, value);
 //        globalMap.put(key, value); 
         globalMap.put("CHAT_INDVD", pair->chatIndividual(pair));
@@ -50,10 +51,10 @@ public class Decoder {
         individualMap.add("GET_USER_DETAIL");        
         individualMap.add("JOIN_QUICK_MATCH");
         individualMap.add("CANCEL_QUICK_MATCH");
-        individualMap.add("INVITE");
         individualMap.add("CREATE_CUSTOM_ROOM");
         individualMap.add("MAKE_MOVE");
         individualMap.add("SURRENDER");
+        individualMap.add("GET_USERS_AVAILABLE_LIST");
     }
 
     public Decoder(){
@@ -138,9 +139,28 @@ public class Decoder {
     }
     
     private void invite(Pair pair){
-        
+        int orgUserId, desUserId;
+        try {
+            String part[] = pair.params.split(";");
+            orgUserId = Integer.parseInt(part[0]);
+            desUserId = Integer.parseInt(part[1]);
+            controller.invite(pair.key, orgUserId, desUserId);
+        } catch (NumberFormatException e) {
+            System.out.println(e);
+        }        
     }
     
+    private void responseInvitation(Pair pair){
+        int desUserId;
+        try {
+            String part[] = pair.params.split(";");
+            desUserId = Integer.parseInt(part[0]);
+            String status = part[1];
+            controller.reponseInvitation(pair.key, desUserId, status);
+        } catch (NumberFormatException e) {
+            System.out.println(e);
+        }           
+    }
     
     // Other request
     
@@ -159,4 +179,5 @@ public class Decoder {
         System.out.println("Invalid message");
         System.out.println(pair);
     }
+   
 }

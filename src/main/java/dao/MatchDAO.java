@@ -30,7 +30,7 @@ public class MatchDAO {
         try {
             conn = dbConnection.getConnection();
             String sql = "INSERT INTO `Match` (player1Id, player2Id, player1Score, player2Score, " +
-                        "matchStatus, startTime) VALUES (?, ?, ?, ?, ?, ?)";
+                        "matchStatus, startTime, boardSize) VALUES (?, ?, ?, ?, ?, ?, ?)";
             ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
             ps.setInt(1, match.getPlayer1Id());
             ps.setInt(2, match.getPlayer2Id());
@@ -38,6 +38,7 @@ public class MatchDAO {
             ps.setInt(4, match.getPlayer2Score());
             ps.setString(5, match.getMatchStatus());
             ps.setTimestamp(6, match.getStartTime());
+            ps.setString(7, match.getBoardSize() != null ? match.getBoardSize() : "3x3");
 
             int affectedRows = ps.executeUpdate();
 
@@ -99,7 +100,7 @@ public class MatchDAO {
         try {
             conn = dbConnection.getConnection();
             String sql = "UPDATE `Match` SET player1Score = ?, player2Score = ?, " +
-                        "winnerId = ?, matchStatus = ?, endTime = ? WHERE matchId = ?";
+                        "winnerId = ?, matchStatus = ?, endTime = ?, boardSize = ? WHERE matchId = ?";
             ps = conn.prepareStatement(sql);
             ps.setInt(1, match.getPlayer1Score());
             ps.setInt(2, match.getPlayer2Score());
@@ -112,7 +113,8 @@ public class MatchDAO {
 
             ps.setString(4, match.getMatchStatus());
             ps.setTimestamp(5, match.getEndTime());
-            ps.setInt(6, match.getMatchId());
+            ps.setString(6, match.getBoardSize() != null ? match.getBoardSize() : "3x3");
+            ps.setInt(7, match.getMatchId());
 
             int affectedRows = ps.executeUpdate();
             return affectedRows > 0;
@@ -584,6 +586,7 @@ public class MatchDAO {
         match.setWinnerId(rs.wasNull() ? null : winnerId);
 
         match.setMatchStatus(rs.getString("matchStatus"));
+        match.setBoardSize(rs.getString("boardSize"));
         match.setStartTime(rs.getTimestamp("startTime"));
         match.setEndTime(rs.getTimestamp("endTime"));
         match.setCreatedAt(rs.getTimestamp("createdAt"));
@@ -611,6 +614,7 @@ public class MatchDAO {
         entity.setWinnerName(rs.getString("winnerName"));
 
         entity.setMatchStatus(rs.getString("matchStatus"));
+        entity.setBoardSize(rs.getString("boardSize"));
         entity.setStartTime(rs.getTimestamp("startTime"));
         entity.setEndTime(rs.getTimestamp("endTime"));
         entity.setDurationMinutes(rs.getInt("durationMinutes"));

@@ -6,6 +6,7 @@ import game.MoveResult;
 import game.Room;
 import game.RoomManager;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
@@ -35,6 +36,7 @@ public class UserRepresentative {
         individualMap.put("CANCEL_QUICK_MATCH", UserRepresentative::cancelQuickMatch);
         individualMap.put("MAKE_MOVE", UserRepresentative::makeMove);
         individualMap.put("SURRENDER", UserRepresentative::surrender);
+        individualMap.put("GET_USERS_AVAILABLE_LIST", UserRepresentative::getUsersAvailableList);
     }
 
     public UserRepresentative(int sessionId, User user, ClientState state, Consumer<Integer> deleteItself) {
@@ -132,6 +134,12 @@ public class UserRepresentative {
         );
         state.writeFrame(String.format("RETURN_USER_DETAIL,,%s", userDetail));
     }
+    
+
+    public void responseInvitation(String status) {
+        
+        encoder.responseInvitation(state, status);
+    }    
     
     /**
      * Hàm này có do người dùng gọi có tác dụng đưa người chơi vào trận đấu.<br>
@@ -268,4 +276,37 @@ public class UserRepresentative {
             encoder.notifyPlayerSurrender(opponent.state, user.getUserId());
         }
     }
+    
+    private void getUsersAvailableList(String params){
+        List<User> onlineUserList = userDAO.getUsersByStatus("online");
+        List<User> ingameUserList = userDAO.getUsersByStatus("ingame"); 
+        
+        encoder.replyUsersAvailableList(state, onlineUserList, ingameUserList);
+    }
+
+    /**
+     * Tạo lời mời tới Representative hiện tại, người gửi là sender
+     * @param sender : Là representative của người gửi.<br>
+     * 
+     */
+    void invite(UserRepresentative sender) {
+        encoder.sendInvitation(state, sender.user.getUserId(), sender.user.getDisplayName());
+        
+        if(user.getStatus().equals("online")){
+            sender.replyInvitation("SUCCESS");
+        }
+        else if(user.getStatus().equals("ingame")){
+            sender.replyInvitation("USER_INGAME");
+        }
+        else{
+            sender.replyInvitation("USER_UNAVAILABLE");
+        }
+    }
+
+    public void replyInvitation(String replyState) {
+        encoder.replyInvitation(state, replyState);
+    }
+
+    
+    
 }

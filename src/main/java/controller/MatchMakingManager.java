@@ -151,7 +151,8 @@ public class MatchMakingManager {
 
         // Khởi tạo bản ghi Match trong Database ngay khi trận đấu bắt đầu
         if (this.matchDAO != null) {
-            model.Match matchRecord = new model.Match(p1.user.getUserId(), p2.user.getUserId());
+            String boardSizeStr = room.getBoxRows() + "x" + room.getBoxCols();
+            model.Match matchRecord = new model.Match(p1.user.getUserId(), p2.user.getUserId(), boardSizeStr);
             matchRecord.setMatchStatus("playing");
             matchRecord.setStartTime(new java.sql.Timestamp(room.getStartTime()));
             int dbMatchId = this.matchDAO.createMatch(matchRecord);

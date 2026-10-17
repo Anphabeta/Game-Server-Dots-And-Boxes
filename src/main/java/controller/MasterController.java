@@ -162,4 +162,21 @@ public class MasterController {
             encoder.replyLogout(key);
         }
     }
+
+    public void invite(SelectionKey key, int orgUserId, int desUserId) {
+        UserRepresentative sender = representativeManager.getByUserId(orgUserId);
+        if(representativeManager.containsUserIdKey(desUserId)){
+            representativeManager.getByUserId(desUserId).invite(sender);
+        }
+        else{
+            sender.replyInvitation("USER_UNAVAILABLE");
+        }
+    }
+
+    public void reponseInvitation(SelectionKey key, int desUserId, String status) {
+        if(representativeManager.containsUserIdKey(desUserId)){
+            representativeManager.getByUserId(desUserId).responseInvitation(status);            
+        }
+
+    }
 }

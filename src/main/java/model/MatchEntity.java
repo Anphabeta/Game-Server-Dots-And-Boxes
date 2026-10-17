@@ -24,6 +24,7 @@ public class MatchEntity implements Serializable {
     private Integer winnerId;
     private String winnerName;
     private String matchStatus;
+    private String boardSize;
     private java.sql.Timestamp startTime;
     private java.sql.Timestamp endTime;
     private int durationMinutes;
@@ -129,6 +130,14 @@ public class MatchEntity implements Serializable {
         this.matchStatus = matchStatus;
     }
 
+    public String getBoardSize() {
+        return boardSize;
+    }
+
+    public void setBoardSize(String boardSize) {
+        this.boardSize = boardSize;
+    }
+
     public java.sql.Timestamp getStartTime() {
         return startTime;
     }
@@ -174,6 +183,7 @@ public class MatchEntity implements Serializable {
                 ", player2=" + player2DisplayName + "(" + player2Score + ")" +
                 ", winner=" + winnerName +
                 ", status='" + matchStatus + '\'' +
+                ", boardSize='" + boardSize + '\'' +
                 '}';
     }
 }

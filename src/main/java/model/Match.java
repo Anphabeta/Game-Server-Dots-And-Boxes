@@ -17,6 +17,7 @@ public class Match implements Serializable {
     private int player2Score;
     private Integer winnerId; // null nếu hòa
     private String matchStatus; // waiting, playing, finished
+    private String boardSize; // 3x3, 4x4, 5x5
     private Timestamp startTime;
     private Timestamp endTime;
     private Timestamp createdAt;
@@ -26,6 +27,7 @@ public class Match implements Serializable {
         this.player1Score = 0;
         this.player2Score = 0;
         this.matchStatus = "waiting";
+        this.boardSize = "3x3";
     }
 
     public Match(int player1Id, int player2Id) {
@@ -34,11 +36,21 @@ public class Match implements Serializable {
         this.player1Score = 0;
         this.player2Score = 0;
         this.matchStatus = "waiting";
+        this.boardSize = "3x3";
+    }
+
+    public Match(int player1Id, int player2Id, String boardSize) {
+        this.player1Id = player1Id;
+        this.player2Id = player2Id;
+        this.player1Score = 0;
+        this.player2Score = 0;
+        this.matchStatus = "waiting";
+        this.boardSize = boardSize;
     }
 
     public Match(int matchId, int player1Id, int player2Id, int player1Score,
                  int player2Score, Integer winnerId, String matchStatus,
-                 Timestamp startTime, Timestamp endTime) {
+                 String boardSize, Timestamp startTime, Timestamp endTime) {
         this.matchId = matchId;
         this.player1Id = player1Id;
         this.player2Id = player2Id;
@@ -46,8 +58,15 @@ public class Match implements Serializable {
         this.player2Score = player2Score;
         this.winnerId = winnerId;
         this.matchStatus = matchStatus;
+        this.boardSize = boardSize;
         this.startTime = startTime;
         this.endTime = endTime;
+    }
+
+    public Match(int matchId, int player1Id, int player2Id, int player1Score,
+                 int player2Score, Integer winnerId, String matchStatus,
+                 Timestamp startTime, Timestamp endTime) {
+        this(matchId, player1Id, player2Id, player1Score, player2Score, winnerId, matchStatus, "3x3", startTime, endTime);
     }
 
     // Getters and Setters
@@ -105,6 +124,14 @@ public class Match implements Serializable {
 
     public void setMatchStatus(String matchStatus) {
         this.matchStatus = matchStatus;
+    }
+
+    public String getBoardSize() {
+        return boardSize;
+    }
+
+    public void setBoardSize(String boardSize) {
+        this.boardSize = boardSize;
     }
 
     public Timestamp getStartTime() {
@@ -168,6 +195,7 @@ public class Match implements Serializable {
                 ", player2Score=" + player2Score +
                 ", winnerId=" + winnerId +
                 ", matchStatus='" + matchStatus + '\'' +
+                ", boardSize='" + boardSize + '\'' +
                 ", startTime=" + startTime +
                 ", endTime=" + endTime +
                 '}';

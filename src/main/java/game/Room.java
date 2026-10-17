@@ -138,7 +138,8 @@ public class Room implements Serializable {
                     matchDAO.updateMatch(match);
                 }
             } else {
-                Match match = new Match(player1.getId(), player2.getId());
+                String bSize = boxRows + "x" + boxCols;
+                Match match = new Match(player1.getId(), player2.getId(), bSize);
                 match.setPlayer1Score(p1Score);
                 match.setPlayer2Score(p2Score);
                 match.setWinnerId(winnerId);
