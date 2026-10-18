@@ -144,19 +144,22 @@ public class Decoder {
             String part[] = pair.params.split(";");
             orgUserId = Integer.parseInt(part[0]);
             desUserId = Integer.parseInt(part[1]);
-            controller.invite(pair.key, orgUserId, desUserId);
+            String broadSize = part[2];
+            controller.invite(pair.key, orgUserId, desUserId, broadSize);
         } catch (NumberFormatException e) {
             System.out.println(e);
         }        
     }
     
     private void responseInvitation(Pair pair){
-        int desUserId;
+        int orgUserId, desUserId;
         try {
             String part[] = pair.params.split(";");
-            desUserId = Integer.parseInt(part[0]);
-            String status = part[1];
-            controller.reponseInvitation(pair.key, desUserId, status);
+            orgUserId = Integer.parseInt(part[0]);
+            desUserId = Integer.parseInt(part[1]);
+            String broadSize = part[2];
+            String status = part[3];
+            controller.reponseInvitation(pair.key, orgUserId, desUserId, broadSize, status);
         } catch (NumberFormatException e) {
             System.out.println(e);
         }           

@@ -30,13 +30,13 @@ public class MoveValidator {
      */
     public ValidationResult validate(Board board, Dot d1, Dot d2) {
         if (board == null) {
-            return new ValidationResult(false, "Bàn cờ không tồn tại");
+            return new ValidationResult(false, "BOARD_NOT_EXIST");
         }
         if (d1 == null || d2 == null) {
-            return new ValidationResult(false, "Tọa độ điểm không hợp lệ hoặc nằm ngoài bàn cờ");
+            return new ValidationResult(false, "INVALID_DOT");
         }
         if (d1.equals(d2)) {
-            return new ValidationResult(false, "Hai điểm trùng nhau, không thể tạo cạnh");
+            return new ValidationResult(false, "OVERLAP_DOT");
         }
 
         // Kiểm tra xem 2 điểm có nằm trong phạm vi bàn cờ không
@@ -44,24 +44,24 @@ public class MoveValidator {
             d1.getCol() < 0 || d1.getCol() >= board.getDotCols() ||
             d2.getRow() < 0 || d2.getRow() >= board.getDotRows() ||
             d2.getCol() < 0 || d2.getCol() >= board.getDotCols()) {
-            return new ValidationResult(false, "Điểm vượt quá giới hạn bàn cờ");
+            return new ValidationResult(false, "INVALID_DOT");
         }
 
         Edge tempEdge = new Edge(d1, d2);
         if (!tempEdge.isAdjacent()) {
-            return new ValidationResult(false, "Hai điểm không kề nhau hoặc cố ý nối chéo");
+            return new ValidationResult(false, "INVALID_DOT");
         }
 
         Edge boardEdge = board.getEdge(d1, d2);
         if (boardEdge == null) {
-            return new ValidationResult(false, "Cạnh không tồn tại trên bàn cờ");
+            return new ValidationResult(false, "EDGE_NOT_EXIST");
         }
 
         if (boardEdge.isDrawn()) {
-            return new ValidationResult(false, "Cạnh này đã được vẽ trước đó");
+            return new ValidationResult(false, "EDGE_EXISTED");
         }
 
-        return new ValidationResult(true, "Nước đi hợp lệ");
+        return new ValidationResult(true, "VALID_MOVE");
     }
 
     public boolean isValidMove(Board board, Dot d1, Dot d2) {

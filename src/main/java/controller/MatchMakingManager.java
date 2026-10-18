@@ -262,7 +262,7 @@ public class MatchMakingManager {
      * - Lưu trạng thái INGAME vào DB<br>
      * - Gửi thông báo MATCH_FOUND cho 2 client<br>
      */
-    private void createMatch(UserRepresentative p1, UserRepresentative p2, String boardSize) {
+    public void createMatch(UserRepresentative p1, UserRepresentative p2, String boardSize) {
         int dim = parseDimension(boardSize);
         RoomManager rm = this.roomManager != null ? this.roomManager : RoomManager.getInstance();
         Room room = rm.createRoom(p1, p2, dim, dim);

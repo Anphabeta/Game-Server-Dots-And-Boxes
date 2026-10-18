@@ -198,11 +198,11 @@ public class Room implements Serializable {
         User u2 = player2Rep.user;
 
         if (winnerId == u1.getUserId()) {
-            u1.setRanking(u1.getRanking() + 25);
-            u2.setRanking(Math.max(0, u2.getRanking() - 20));
+            u1.setRanking(u1.getRanking() + boxRows*5);
+            u2.setRanking(Math.max(0, u2.getRanking() - boxRows*5));
         } else if (winnerId == u2.getUserId()) {
-            u2.setRanking(u2.getRanking() + 25);
-            u1.setRanking(Math.max(0, u1.getRanking() - 20));
+            u2.setRanking(u2.getRanking() + boxRows*5);
+            u1.setRanking(Math.max(0, u1.getRanking() - boxRows*5));
         }
 
         if (userDAO != null) {

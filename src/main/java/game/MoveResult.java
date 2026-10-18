@@ -81,7 +81,7 @@ public class MoveResult implements Serializable {
 
     public static class Builder {
         private boolean success = true;
-        private String message = "Thành công";
+        private String message = "VALID_MOVE";
         private Edge edge;
         private List<Box> completedBoxes;
         private Player playedBy;

@@ -171,8 +171,8 @@ public class Encoder {
         state.writeFrame(String.format("INVITED,,%s", replyState));
     }
 
-    public void sendInvitation(ClientState state, int userId, String displayName) {
-        state.writeFrame(String.format("INVITED_BY,,%d;%s", userId, displayName));
+    public void sendInvitation(ClientState state, int userId, String displayName, String boardSize) {
+        state.writeFrame(String.format("INVITED_BY,,%d;%s;%s", userId, displayName, boardSize));
     }
 
     public void responseInvitation(ClientState state, String status) {

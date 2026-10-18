@@ -163,20 +163,27 @@ public class MasterController {
         }
     }
 
-    public void invite(SelectionKey key, int orgUserId, int desUserId) {
+    public void invite(SelectionKey key, int orgUserId, int desUserId, String broadSize) {
         UserRepresentative sender = representativeManager.getByUserId(orgUserId);
         if(representativeManager.containsUserIdKey(desUserId)){
-            representativeManager.getByUserId(desUserId).invite(sender);
+            representativeManager.getByUserId(desUserId).invite(sender, broadSize);
         }
         else{
             sender.replyInvitation("USER_UNAVAILABLE");
         }
     }
 
-    public void reponseInvitation(SelectionKey key, int desUserId, String status) {
+    public void reponseInvitation(SelectionKey key, int orgUserId, int desUserId, String broadSize, String status) {
         if(representativeManager.containsUserIdKey(desUserId)){
             representativeManager.getByUserId(desUserId).responseInvitation(status);            
         }
-
+        
+        if("ACCEPT".equalsIgnoreCase(status)){
+            UserRepresentative player1 = representativeManager.getByUserId(desUserId);
+            UserRepresentative player2 = representativeManager.getByUserId(orgUserId);
+            if(player1 != null && player2 != null) {
+                matchMakingManager.createMatch(player1, player2, broadSize);
+            }
+        }
     }
 }

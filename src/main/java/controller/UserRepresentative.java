@@ -291,8 +291,8 @@ public class UserRepresentative {
      * @param sender : Là representative của người gửi.<br>
      * 
      */
-    void invite(UserRepresentative sender) {
-        encoder.sendInvitation(state, sender.user.getUserId(), sender.user.getDisplayName());
+    void invite(UserRepresentative sender, String broadSize) {
+        encoder.sendInvitation(state, sender.user.getUserId(), sender.user.getDisplayName(), broadSize);
         
         if(user.getStatus().equals("online")){
             sender.replyInvitation("SUCCESS");
