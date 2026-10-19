@@ -167,15 +167,61 @@ public class Encoder {
         state.writeFrame(sb.toString());
     }
 
-    public void replyInvitation(ClientState state, String replyState) {
+    /**
+     * @param replyState : 
+     * SUCCESS; USER_UNAVAILABLE; USER_INGAME
+     */
+    public void replyInvite(ClientState state, String replyState) {
         state.writeFrame(String.format("INVITED,,%s", replyState));
     }
 
     public void sendInvitation(ClientState state, int userId, String displayName, String boardSize) {
         state.writeFrame(String.format("INVITED_BY,,%d;%s;%s", userId, displayName, boardSize));
     }
+    
+    /**
+     * @param status :
+     * SUCCESS; FAIL
+     */
+    public void replyResponseInvite(ClientState state, String status){
+        state.writeFrame(String.format("REPLY_RESPONSE_INVITE,,%s", status));
+    }
 
+    /**
+     * Đưa phản hồi trạng thái lời mời của server cho người đã đưa ra lời mời
+     * 
+     * @param status: <br>
+     * ACCEPT: Tìm được người chơi và ghép trận thành công, <br>
+     * REJECTED: Tìm được người chơi nhưng họ từ chối, <br>
+     * FAIL: Không tìm được người chơi<br>
+     */
     public void responseInvitation(ClientState state, String status) {
         state.writeFrame(String.format("RESPONSE_INVITATION,,%s", status));
+    }
+    
+    /**
+     * @param status : SUCCESS, ALREADY_BUSY, ALREADY_IN_QUEUE, CREATE_FAILED
+     */
+    public void replyShareRoom(SelectionKey key, String status, String roomCode){
+        if (roomCode != null && !roomCode.isEmpty()) {
+            getState(key).writeFrame(String.format("REPLY_SHARE_ROOM,,%s;%s", status, roomCode));
+        } else {
+            getState(key).writeFrame(String.format("REPLY_SHARE_ROOM,,%s", status));
+        }
+    }
+
+    public void replyShareRoom(SelectionKey key, String status){
+        replyShareRoom(key, status, null);
+    }
+
+    public void replyCancelShareRoom(SelectionKey key, String status){
+        getState(key).writeFrame(String.format("REPLY_CANCEL_SHARE_ROOM,,%s", status));
+    }
+    
+    /**
+     * @param status : SUCCESS, INVALID_CODE, FAIL, IS_FULL, CANNOT_JOIN_OWN_ROOM, ALREADY_BUSY, OWNER_BUSY
+     */
+    public void replyFindRoom(ClientState state, String status){
+        state.writeFrame(String.format("REPLY_FIND_ROOM,,%s", status));
     }
 }

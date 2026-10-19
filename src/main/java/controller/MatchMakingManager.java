@@ -3,8 +3,10 @@ package controller;
 import dao.MatchDAO;
 import dao.UserDAO;
 import game.Room;
+import game.RoomCodeUtil;
 import game.RoomManager;
 import java.sql.Timestamp;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,6 +28,9 @@ public class MatchMakingManager {
     
     // Map tra cứu nhanh người chơi đang ở hàng đợi của kích thước nào (O(1) cho cleanup)
     private final Map<UserRepresentative, String> playerCurrentSize = new ConcurrentHashMap<>();
+    
+    // Map tra cứu các phòng chờ
+    private final Map<String, WaitingRoom> waitingRooms = new ConcurrentHashMap<>();
 
     private final Random random = new Random();
 
@@ -51,6 +56,19 @@ public class MatchMakingManager {
     public void setDAO(UserDAO userDAO, MatchDAO matchDAO) {
         this.userDAO = userDAO;
         this.matchDAO = matchDAO;
+    }
+    
+    private class WaitingRoom{
+        public String roomCode;
+        public UserRepresentative owner;
+        public String boardSize;
+        public boolean isFull = false;
+
+        public WaitingRoom(String roomCode, UserRepresentative owner, String boardSize) {
+            this.roomCode = roomCode;
+            this.owner = owner;
+            this.boardSize = boardSize;
+        }
     }
 
     /**
@@ -262,7 +280,7 @@ public class MatchMakingManager {
      * - Lưu trạng thái INGAME vào DB<br>
      * - Gửi thông báo MATCH_FOUND cho 2 client<br>
      */
-    public void createMatch(UserRepresentative p1, UserRepresentative p2, String boardSize) {
+    private void createMatch(UserRepresentative p1, UserRepresentative p2, String boardSize) {
         int dim = parseDimension(boardSize);
         RoomManager rm = this.roomManager != null ? this.roomManager : RoomManager.getInstance();
         Room room = rm.createRoom(p1, p2, dim, dim);
@@ -317,6 +335,22 @@ public class MatchMakingManager {
             encoder.notifyMatchFound(p2.state, matchInfoForP2);
         }
     }
+    
+    public void matchInvitation(UserRepresentative owner, UserRepresentative other, String boardSize){
+        if(owner == null || !isPlayerActive(owner)){
+            encoder.responseInvitation(owner.state, "FAIL");
+            encoder.replyResponseInvite(other.state, "FAIL");
+            return;
+        }
+        
+        if(other == null || !isPlayerActive(other)){
+            encoder.responseInvitation(owner.state, "FAIL");
+            encoder.replyResponseInvite(other.state, "FAIL");
+            return;
+        }
+        
+        createMatch(owner, other, boardSize);      
+    }
 
     public synchronized int getQueueSize(String boardSize) {
         ConcurrentLinkedQueue<UserRepresentative> q = queuesByBoardSize.get(boardSize);
@@ -325,5 +359,99 @@ public class MatchMakingManager {
 
     public synchronized int getTotalQueueSize() {
         return playerCurrentSize.size();
+    }
+
+    public synchronized String createWaitingRoom(UserRepresentative owner, String boardSize) {
+        if (owner == null) {
+            return null;
+        }
+
+        // Dọn dẹp phòng cũ của owner nếu có (chống leak khi spam tạo phòng)
+        removeWaitingRoom(owner);
+
+        // Sinh mã ngẫu nhiên kèm retry loop tránh trùng lặp
+        String roomCode = null;
+        for (int i = 0; i < 10; i++) {
+            String candidate = RoomCodeUtil.generate();
+            if (!waitingRooms.containsKey(candidate)) {
+                roomCode = candidate;
+                break;
+            }
+        }
+
+        if (roomCode == null) {
+            return null;
+        }
+
+        waitingRooms.put(roomCode, new WaitingRoom(roomCode, owner, boardSize));
+        return roomCode;
+    }
+
+    public synchronized boolean createWaitingRoom(String roomCode, UserRepresentative owner, String boardSize) {        
+        if (roomCode == null || waitingRooms.containsKey(roomCode) || owner == null) {
+            return false;
+        }
+        
+        removeWaitingRoom(owner);
+        waitingRooms.put(roomCode, new WaitingRoom(roomCode, owner, boardSize));
+        return true;
+    }
+
+    public synchronized boolean findWaitingRoom(String roomCode, UserRepresentative player) {
+        if (player == null) return false;
+        
+        if (roomCode == null || !waitingRooms.containsKey(roomCode)) {
+            encoder.replyFindRoom(player.state, "INVALID_CODE");
+            return false;
+        }
+        
+        WaitingRoom waitingRoom = waitingRooms.get(roomCode);
+
+        // Chặn người chơi tự vào phòng của chính mình
+        if (player.equals(waitingRoom.owner) || player.user.getUserId() == waitingRoom.owner.user.getUserId()) {
+            encoder.replyFindRoom(player.state, "CANNOT_JOIN_OWN_ROOM");
+            return false;
+        }
+
+        if (waitingRoom.isFull) {
+            encoder.replyFindRoom(player.state, "IS_FULL");
+            return false;
+        }
+        
+        // Kiểm tra chủ phòng còn online/active không
+        if (waitingRoom.owner == null || !isPlayerActive(waitingRoom.owner)) {
+            waitingRooms.remove(roomCode);
+            encoder.replyFindRoom(player.state, "FAIL");
+            return false;
+        }
+
+        // Kiểm tra trạng thái hiện tại của chủ phòng
+        if (User.STATUS.INGAME.equalsIgnoreCase(waitingRoom.owner.user.getStatus())) {
+            waitingRooms.remove(roomCode);
+            encoder.replyFindRoom(player.state, "OWNER_BUSY");
+            return false;
+        }
+        
+        waitingRoom.isFull = true;
+        waitingRooms.remove(roomCode);
+        
+        createMatch(waitingRoom.owner, player, waitingRoom.boardSize);
+        encoder.replyFindRoom(player.state, "SUCCESS");
+        return true;
+    }
+    
+    public synchronized boolean removeWaitingRoom(UserRepresentative user) {
+        if (user == null) return false;
+        boolean removed = false;
+        Iterator<Map.Entry<String, WaitingRoom>> it = waitingRooms.entrySet().iterator();
+        while (it.hasNext()) {
+            Map.Entry<String, WaitingRoom> entry = it.next();
+            WaitingRoom room = entry.getValue();
+            if (user.equals(room.owner) || (room.owner != null && user.user.getUserId() == room.owner.user.getUserId())) {
+                it.remove();
+                removed = true;
+            }
+        }
+        return removed;
     }
 }

@@ -24,6 +24,7 @@ public class User implements Serializable {
         public static final String OFFLINE = "offline";
         public static final String INGAME = "ingame";
         public static final String QUEUING = "queuing";
+        public static final String WAITING_ROOM = "waiting_room";
     }
 
     // Constructors

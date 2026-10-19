@@ -4,6 +4,7 @@ import dao.MatchDAO;
 import dao.UserDAO;
 import game.MoveResult;
 import game.Room;
+import game.RoomCodeUtil;
 import game.RoomManager;
 import java.util.HashMap;
 import java.util.List;
@@ -12,6 +13,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import model.User;
 import network.ClientState;
+import request.Decoder;
 import request.Encoder;
 
 public class UserRepresentative {
@@ -36,7 +38,7 @@ public class UserRepresentative {
         individualMap.put("CANCEL_QUICK_MATCH", UserRepresentative::cancelQuickMatch);
         individualMap.put("MAKE_MOVE", UserRepresentative::makeMove);
         individualMap.put("SURRENDER", UserRepresentative::surrender);
-        individualMap.put("GET_USERS_AVAILABLE_LIST", UserRepresentative::getUsersAvailableList);
+        individualMap.put("GET_USERS_AVAILABLE_LIST", UserRepresentative::getUsersAvailableList);     
     }
 
     public UserRepresentative(int sessionId, User user, ClientState state, Consumer<Integer> deleteItself) {
@@ -74,9 +76,19 @@ public class UserRepresentative {
     
     private void deleteRepresentative(){
         heartBeatManager.stop();
+        
+        deleteDependency();
+            
+        deleteItself.accept(sessionId);
+        System.out.println("Representative delete itself");
+    }
+    
+    private void deleteDependency(){
         if (matchMakingManager != null) {
             matchMakingManager.removePlayer(this);
-        }
+            matchMakingManager.removeWaitingRoom(this);
+        }        
+        
         if (currentRoom != null && !currentRoom.isFinished()) {
             currentRoom.handleDisconnect(user.getUserId());
             UserRepresentative opponent = currentRoom.getOpponentRepByUserId(user.getUserId());
@@ -84,8 +96,6 @@ public class UserRepresentative {
                 encoder.notifyOpponentDisconnect(opponent.state, user.getUserId());
             }
         }
-        deleteItself.accept(sessionId);
-        System.out.println("Representative delete itself");
     }
     
     public void resetSchedule(){
@@ -295,20 +305,20 @@ public class UserRepresentative {
         encoder.sendInvitation(state, sender.user.getUserId(), sender.user.getDisplayName(), broadSize);
         
         if(user.getStatus().equals("online")){
-            sender.replyInvitation("SUCCESS");
+            sender.replyInvite("SUCCESS");
         }
         else if(user.getStatus().equals("ingame")){
-            sender.replyInvitation("USER_INGAME");
+            sender.replyInvite("USER_INGAME");
         }
         else{
-            sender.replyInvitation("USER_UNAVAILABLE");
+            sender.replyInvite("USER_UNAVAILABLE");
         }
     }
 
-    public void replyInvitation(String replyState) {
-        encoder.replyInvitation(state, replyState);
+    public void replyInvite(String replyState) {
+        encoder.replyInvite(state, replyState);
     }
 
-    
+
     
 }

@@ -2,6 +2,7 @@ package controller;
 
 import dao.MatchDAO;
 import dao.UserDAO;
+import game.RoomCodeUtil;
 import game.RoomManager;
 import java.nio.channels.SelectionKey;
 import model.User;
@@ -148,8 +149,88 @@ public class MasterController {
             srcRepst.unableToChat("USER_OFFLINE");
         }
     }
+
+    public void invite(SelectionKey key, int orgUserId, int desUserId, String broadSize) {
+        UserRepresentative sender = representativeManager.getByUserId(orgUserId);
+        if(representativeManager.containsUserIdKey(desUserId)){
+            representativeManager.getByUserId(desUserId).invite(sender, broadSize);
+        }
+        else{
+            sender.replyInvite("USER_UNAVAILABLE");
+        }
+    }
+
+    public void reponseInvite(SelectionKey key, int orgUserId, int desUserId, String broadSize, String status) {
+        if(representativeManager.containsUserIdKey(desUserId)){
+            representativeManager.getByUserId(desUserId).responseInvitation(status);            
+        }
+        
+        if("ACCEPT".equalsIgnoreCase(status)){
+            UserRepresentative owner = representativeManager.getByUserId(desUserId);
+            UserRepresentative other = representativeManager.getByUserId(orgUserId);
+            matchMakingManager.matchInvitation(owner, other, broadSize);
+        }
+    }    
     
+    public void shareRoom(SelectionKey key, int ownerUserId, String boardSize){
+        UserRepresentative owner = representativeManager.getByUserId(ownerUserId);
+        if (owner == null) {
+            encoder.replyShareRoom(key, "CREATE_FAILED");
+            return;
+        }
+
+        // Kiểm tra trạng thái hiện tại (chỉ cho phép tạo phòng khi ONLINE)
+        if (User.STATUS.QUEUING.equalsIgnoreCase(owner.user.getStatus())) {
+            encoder.replyShareRoom(key, "ALREADY_IN_QUEUE");
+            return;
+        }
+        if (!User.STATUS.ONLINE.equalsIgnoreCase(owner.user.getStatus())) {
+            encoder.replyShareRoom(key, "ALREADY_BUSY");
+            return;
+        }
+
+        String roomCode = matchMakingManager.createWaitingRoom(owner, boardSize);
+
+        if(roomCode != null){
+            owner.user.setStatus(User.STATUS.WAITING_ROOM);
+            encoder.replyShareRoom(key, "SUCCESS", roomCode);
+        }
+        else{
+            System.out.println("Create waiting room failure");
+            encoder.replyShareRoom(key, "CREATE_FAILED");
+        }        
+    }
+
+    public void cancelShareRoom(SelectionKey key, int ownerUserId){
+        UserRepresentative owner = representativeManager.getByUserId(ownerUserId);
+        if (owner == null) {
+            encoder.replyCancelShareRoom(key, "FAIL");
+            return;
+        }
+
+        boolean removed = matchMakingManager.removeWaitingRoom(owner);
+        if (removed || User.STATUS.WAITING_ROOM.equalsIgnoreCase(owner.user.getStatus())) {
+            owner.user.setStatus(User.STATUS.ONLINE);
+            encoder.replyCancelShareRoom(key, "SUCCESS");
+        } else {
+            encoder.replyCancelShareRoom(key, "NOT_IN_WAITING_ROOM");
+        }
+    }
     
+    public void findRoom(SelectionKey key, int orgUserId, String roomCode){
+        UserRepresentative user = representativeManager.getByUserId(orgUserId);
+        if (user == null) {
+            return;
+        }
+
+        // Kiểm tra trạng thái người tham gia
+        if (!User.STATUS.ONLINE.equalsIgnoreCase(user.user.getStatus())) {
+            encoder.replyFindRoom(user.state, "ALREADY_BUSY");
+            return;
+        }
+
+        matchMakingManager.findWaitingRoom(roomCode, user);
+    }
     
     
     // Dispatch individual
@@ -163,27 +244,4 @@ public class MasterController {
         }
     }
 
-    public void invite(SelectionKey key, int orgUserId, int desUserId, String broadSize) {
-        UserRepresentative sender = representativeManager.getByUserId(orgUserId);
-        if(representativeManager.containsUserIdKey(desUserId)){
-            representativeManager.getByUserId(desUserId).invite(sender, broadSize);
-        }
-        else{
-            sender.replyInvitation("USER_UNAVAILABLE");
-        }
-    }
-
-    public void reponseInvitation(SelectionKey key, int orgUserId, int desUserId, String broadSize, String status) {
-        if(representativeManager.containsUserIdKey(desUserId)){
-            representativeManager.getByUserId(desUserId).responseInvitation(status);            
-        }
-        
-        if("ACCEPT".equalsIgnoreCase(status)){
-            UserRepresentative player1 = representativeManager.getByUserId(desUserId);
-            UserRepresentative player2 = representativeManager.getByUserId(orgUserId);
-            if(player1 != null && player2 != null) {
-                matchMakingManager.createMatch(player1, player2, broadSize);
-            }
-        }
-    }
 }

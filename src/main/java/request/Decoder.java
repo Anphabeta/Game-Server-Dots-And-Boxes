@@ -41,7 +41,10 @@ public class Decoder {
         globalMap.put("LOGOUT", pair->logout(pair));
         globalMap.put("ATTACH_REQUEST", pair->attachRequest(pair));
         globalMap.put("INVITE", pair->invite(pair));
-        globalMap.put("RESPONSE_INVITATION", pair->responseInvitation(pair));
+        globalMap.put("RESPONSE_INVITE", pair->responseInvite(pair));
+        globalMap.put("SHARE_ROOM", pair->shareRoom(pair));
+        globalMap.put("CANCEL_SHARE_ROOM", pair->cancelShareRoom(pair));
+        globalMap.put("FIND_ROOM", pair->findRoom(pair));  
 //        globalMap.put(key, value);
 //        globalMap.put(key, value); 
         globalMap.put("CHAT_INDVD", pair->chatIndividual(pair));
@@ -151,7 +154,7 @@ public class Decoder {
         }        
     }
     
-    private void responseInvitation(Pair pair){
+    private void responseInvite(Pair pair){
         int orgUserId, desUserId;
         try {
             String part[] = pair.params.split(";");
@@ -159,11 +162,44 @@ public class Decoder {
             desUserId = Integer.parseInt(part[1]);
             String broadSize = part[2];
             String status = part[3];
-            controller.reponseInvitation(pair.key, orgUserId, desUserId, broadSize, status);
+            controller.reponseInvite(pair.key, orgUserId, desUserId, broadSize, status);
         } catch (NumberFormatException e) {
             System.out.println(e);
         }           
     }
+    
+    private void shareRoom(Pair pair){
+        try {
+            String part[] = pair.params.split(";");
+            int ownerUserId = Integer.parseInt(part[0]);
+            String boardSize = part[1];
+            
+            controller.shareRoom(pair.key, ownerUserId, boardSize);
+        } catch (Exception e) {
+        }
+    }
+
+    private void cancelShareRoom(Pair pair){
+        try {
+            int ownerUserId = Integer.parseInt(pair.params.trim());
+            controller.cancelShareRoom(pair.key, ownerUserId);
+        } catch (Exception e) {
+        }
+    }
+
+    private void findRoom(Pair pair){
+        try {
+            String part[] = pair.params.split(";");
+            int orgUserId = Integer.parseInt(part[0]);
+            String roomCode = part[1];
+            
+            controller.findRoom(pair.key, orgUserId, roomCode);
+        } catch (Exception e) {
+        }
+    }
+    
+    
+    
     
     // Other request
     
