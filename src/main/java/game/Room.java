@@ -54,6 +54,11 @@ public class Room implements Serializable {
         System.out.println("Room created: Room " + roomId);
     }
 
+    public void sendRestoreSnapshot(UserRepresentative forRep) {
+        if (encoder == null || forRep == null || forRep.state == null) return;
+        encoder.notifyRestoreMatch(forRep.state, this, forRep.user.getUserId());
+    }
+    
     public void setDAO(UserDAO userDAO, MatchDAO matchDAO) {
         this.userDAO = userDAO;
         this.matchDAO = matchDAO;

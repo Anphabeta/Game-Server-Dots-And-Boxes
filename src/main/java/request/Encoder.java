@@ -1,18 +1,74 @@
 package request;
 
 import java.nio.channels.SelectionKey;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import game.Box;
-import game.MoveResult;
 import java.util.List;
+
+import controller.UserRepresentative;
+import game.Board;
+import game.Box;
+import game.Edge;
+import game.GameEngine;
+import game.MoveResult;
+import game.Player;
+import game.Room;
+import model.LeaderboardEntry;
 import model.User;
 import network.ClientState;
 import network.NioServer;
 
 public class Encoder {
     private NioServer network;
+
+    public void notifyRestoreMatch(ClientState state, Room room, int forUserId) {
+        GameEngine engine = room.getGameEngine();
+        Board board = engine.getBoard();
+
+        // role: 1 nếu forUserId là player1, 2 nếu là player2
+        int role = room.getPlayer1().getId() == forUserId ? 1 : 2;
+        Player opponent = role == 1 ? room.getPlayer2() : room.getPlayer1();
+        UserRepresentative opponentRep = room.getOpponentRepByUserId(forUserId);
+
+        StringBuilder edgesStr = new StringBuilder();
+        for (Edge e : board.getAllEdges()) {
+            if (e.isDrawn()) {
+                edgesStr.append(e.getDot1().getRow()).append(":").append(e.getDot1().getCol())
+                        .append(":").append(e.getDot2().getRow()).append(":").append(e.getDot2().getCol())
+                        .append("|");
+            }
+        }
+        StringBuilder boxesStr = new StringBuilder();
+        for (int r = 0; r < board.getBoxRows(); r++) {
+            for (int c = 0; c < board.getBoxCols(); c++) {
+                Box b = board.getBox(r, c);
+                if (b.hasOwner()) {
+                    boxesStr.append(r).append(":").append(c).append(":")
+                            .append(b.getOwner().getId()).append("|");
+                }
+            }
+        }
+
+        int nextTurn = engine.getCurrentTurn().getId();
+
+        // ID thật của player 1
+        int p1UserId = room.getPlayer1().getId();
+
+        String data = String.format("%d;%s;%s;%d;%d;%d;%d;%d;%d;%d;%s;%s",
+                room.getRoomId(),
+                opponentRep != null ? opponentRep.user.getUsername() : "",
+                opponentRep != null ? opponentRep.user.getDisplayName() : "",
+                opponent.getId(),
+                role,
+                room.getBoxRows(),
+                room.getPlayer1().getScore(),
+                room.getPlayer2().getScore(),
+                nextTurn,
+                p1UserId,
+                edgesStr.length() > 0 ? edgesStr.substring(0, edgesStr.length() - 1) : "NONE",
+                boxesStr.length() > 0 ? boxesStr.substring(0, boxesStr.length() - 1) : "NONE"
+        );
+
+        state.writeFrame(String.format("RESTORE_MATCH,,%s", data));
+    }
 
     public void setNetwork(NioServer network) {
         this.network = network;
@@ -57,6 +113,37 @@ public class Encoder {
 
     public void returnUserDetail(ClientState state, String userDetail) {
         state.writeFrame(String.format("RETURN_USER_DETAIL,,%s", userDetail));
+    }
+
+    public void replyLeaderboard(
+            ClientState state,
+            List<LeaderboardEntry> entries) {
+
+        if (state == null || !state.isValid()) {
+            return;
+        }
+
+        StringBuilder payload = new StringBuilder();
+
+        if (entries != null) {
+            for (LeaderboardEntry entry : entries) {
+                if (payload.length() > 0) {
+                    payload.append("|");
+                }
+
+                payload.append(entry.getRank()).append(";")
+                    .append(entry.getUserId()).append(";")
+                    .append(entry.getUsername()).append(";")
+                    .append(entry.getDisplayName()).append(";")
+                    .append(entry.getRanking()).append(";")
+                    .append(entry.getTotalWins());
+            }
+        }
+
+        String response = "REPLY_LEADERBOARD,," + payload;
+
+        System.out.println("[SERVER] " + response);
+        state.writeFrame(response);
     }
 
     public void replyJoinQuickMatch(ClientState state, String status) {
@@ -165,6 +252,44 @@ public class Encoder {
         
         System.out.println(sb.toString());
         state.writeFrame(sb.toString());
+    }
+
+    public void replyAllUsersList(
+            ClientState state,
+            List<User> users) {
+
+        if (state == null || !state.isValid()) {
+            return;
+        }
+
+        StringBuilder payload = new StringBuilder();
+
+        if (users != null) {
+            for (User user : users) {
+                if (user == null) {
+                    continue;
+                }
+
+                if (payload.length() > 0) {
+                    payload.append("|");
+                }
+
+                payload.append(user.getUserId()).append(":")
+                    .append(user.getUsername()).append(":")
+                    .append(user.getDisplayName() == null
+                        ? ""
+                        : user.getDisplayName()).append(":")
+                    .append(user.getStatus() == null
+                        ? "offline"
+                        : user.getStatus());
+            }
+        }
+
+        String response =
+            "REPLY_USERS_AVAILABLE_LIST,," + payload;
+
+        System.out.println("[USERS] " + response);
+        state.writeFrame(response);
     }
 
     /**

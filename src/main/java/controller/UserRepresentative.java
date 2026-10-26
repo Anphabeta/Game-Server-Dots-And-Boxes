@@ -1,25 +1,25 @@
 package controller;
 
-import dao.MatchDAO;
-import dao.UserDAO;
-import game.MoveResult;
-import game.Room;
-import game.RoomCodeUtil;
-import game.RoomManager;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+
+import dao.MatchDAO;
+import dao.UserDAO;
+import game.MoveResult;
+import game.Room;
+import game.RoomManager;
+import model.LeaderboardEntry;
 import model.User;
 import network.ClientState;
-import request.Decoder;
 import request.Encoder;
 
 public class UserRepresentative {
     public final int sessionId;
     public final User user;
-    public final ClientState state;
+    public ClientState state;
     private final Consumer<Integer> deleteItself;
     private final HeartBeatManager heartBeatManager;
     
@@ -38,7 +38,8 @@ public class UserRepresentative {
         individualMap.put("CANCEL_QUICK_MATCH", UserRepresentative::cancelQuickMatch);
         individualMap.put("MAKE_MOVE", UserRepresentative::makeMove);
         individualMap.put("SURRENDER", UserRepresentative::surrender);
-        individualMap.put("GET_USERS_AVAILABLE_LIST", UserRepresentative::getUsersAvailableList);     
+        individualMap.put("GET_USERS_AVAILABLE_LIST", UserRepresentative::getUsersAvailableList);    
+        individualMap.put("GET_LEADERBOARD", UserRepresentative::getLeaderboard); 
     }
 
     public UserRepresentative(int sessionId, User user, ClientState state, Consumer<Integer> deleteItself) {
@@ -46,9 +47,30 @@ public class UserRepresentative {
         this.user = user;
         this.state = state;
         this.deleteItself = deleteItself;
-        this.heartBeatManager = new HeartBeatManager(()->deleteRepresentative(), 10000);
+        this.heartBeatManager = new HeartBeatManager(()->deleteRepresentative(), 10);
     }
-    
+
+    public void sendRestoreState() {
+        System.out.println("=== RESTORE DEBUG ===");
+        System.out.println("User: " + user.getUsername());
+        System.out.println("Room: " + currentRoom);
+
+        if (currentRoom != null) {
+            System.out.println("Room finished: " + currentRoom.isFinished());
+        }
+
+        if (currentRoom != null && !currentRoom.isFinished()) {
+            System.out.println("SENDING RESTORE_MATCH");
+            currentRoom.sendRestoreSnapshot(this);
+        } else {
+            System.out.println("NO ACTIVE MATCH");
+        }
+    }
+
+    public void reattachState(ClientState newState) {
+        this.state = newState;
+    }
+
     public void setDAO(UserDAO userDAO, MatchDAO matchDAO){
         this.userDAO = userDAO;
         this.matchDAO = matchDAO;
@@ -74,13 +96,41 @@ public class UserRepresentative {
         return currentRoom;
     }
     
-    private void deleteRepresentative(){
+    private void deleteRepresentative() {
+        // Dừng heartbeat của phiên đã hết hạn
         heartBeatManager.stop();
-        
+
+        // Dọn khỏi hàng đợi và xử lý trận đấu nếu đang chơi
         deleteDependency();
-            
+
+        // Đánh dấu người chơi ngoại tuyến trong bộ nhớ
+        user.setStatus(User.STATUS.OFFLINE);
+
+        // Đồng bộ trạng thái xuống MySQL
+        if (userDAO != null) {
+            boolean updated = userDAO.updateUserStatus(
+                user.getUserId(),
+                User.STATUS.OFFLINE
+            );
+
+            System.out.println(
+                "[STATUS] Disconnect timeout: "
+                + user.getUsername()
+                + " -> offline, DB updated=" + updated
+            );
+        } else {
+            System.err.println(
+                "[STATUS] Cannot update offline status: UserDAO is null for "
+                + user.getUsername()
+            );
+        }
+
+        // Xóa đại diện của phiên đã hết hạn
         deleteItself.accept(sessionId);
-        System.out.println("Representative delete itself");
+
+        System.out.println(
+            "[SESSION] Representative removed: " + sessionId
+        );
     }
     
     private void deleteDependency(){
@@ -145,6 +195,22 @@ public class UserRepresentative {
         state.writeFrame(String.format("RETURN_USER_DETAIL,,%s", userDetail));
     }
     
+    private void getLeaderboard(String params) {
+        if (userDAO == null || encoder == null) {
+            System.err.println(
+                "[LEADERBOARD] UserDAO or Encoder is null"
+            );
+            return;
+        }
+
+        List<LeaderboardEntry> entries = userDAO.getLeaderboard(7);
+
+        System.out.println(
+            "[LEADERBOARD] Retrieved " + entries.size() + " users"
+        );
+
+        encoder.replyLeaderboard(state, entries);
+    }
 
     public void responseInvitation(String status) {
         
@@ -289,11 +355,19 @@ public class UserRepresentative {
         }
     }
     
-    private void getUsersAvailableList(String params){
-        List<User> onlineUserList = userDAO.getUsersByStatus("online");
-        List<User> ingameUserList = userDAO.getUsersByStatus("ingame"); 
-        
-        encoder.replyUsersAvailableList(state, onlineUserList, ingameUserList);
+    private void getUsersAvailableList(String params) {
+        if (userDAO == null || encoder == null) {
+            System.err.println("[USERS] UserDAO or Encoder is null");
+            return;
+        }
+
+        // Lấy tất cả tài khoản đã đăng ký từ MySQL
+        List<User> users = userDAO.getAllUsers();
+
+        System.out.println("[USERS] Retrieved " + users.size() + " users");
+
+        // Gửi toàn bộ danh sách về frontend
+        encoder.replyAllUsersList(state, users);
     }
 
     /**

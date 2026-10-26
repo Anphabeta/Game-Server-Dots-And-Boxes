@@ -1,10 +1,10 @@
 package controller;
 
+import java.nio.channels.SelectionKey;
+
 import dao.MatchDAO;
 import dao.UserDAO;
-import game.RoomCodeUtil;
 import game.RoomManager;
-import java.nio.channels.SelectionKey;
 import model.User;
 import network.ClientState;
 import request.Encoder;
@@ -25,6 +25,20 @@ public class MasterController {
         this.matchMakingManager.setEncoder(encoder);
         this.matchMakingManager.setRoomManager(roomManager);
         this.matchMakingManager.setDAO(userDAO, matchDAO);
+    }
+
+    public void resetStaleUserStatuses() {
+        int count = userDAO.resetStaleUserStatuses();
+
+        if (count >= 0) {
+            System.out.println(
+                "[STATUS] Startup status reset completed"
+            );
+        } else {
+            System.err.println(
+                "[STATUS] Startup status reset failed"
+            );
+        }
     }
 
     // General function
@@ -81,9 +95,47 @@ public class MasterController {
         }
         
         User user = userDAO.findByUsernameAndPassword(userName, password);
-        if(representativeManager.containsUserIdKey(user.getUserId())){
-            loginStatus = "ACCOUNT_ALREADY_ONLINE";
-            encoder.replyLogin(key, loginStatus);           
+        UserRepresentative existing = representativeManager.getByUserId(user.getUserId());
+
+        if (existing != null) {
+            if (existing.state != null && existing.state.isValid()) {
+                // Vẫn còn 1 tab/kết nối khác đang sống thật sự
+                encoder.replyLogin(key, "ACCOUNT_ALREADY_ONLINE");
+                return;
+            }
+
+            // Representative còn tồn tại nhưng ClientState cũ đã chết (đóng tab / rớt mạng)
+            // -> KHÔI PHỤC vào kết nối mới này, giữ nguyên sessionId cũ
+            ClientState newState = (ClientState) key.attachment();
+            existing.reattachState(newState);
+            newState.setSessionId(existing.sessionId);
+            existing.resetSchedule();           // reset đồng hồ heartbeat
+            
+            // Đồng bộ trạng thái hiện tại của phiên người dùng vào MySQL.
+            // Giữ nguyên trạng thái hiện tại để không vô tình chuyển
+            // người đang chơi thành người đang rảnh.
+            String currentStatus = existing.user.getStatus();
+
+            if (currentStatus == null || currentStatus.trim().isEmpty()) {
+                currentStatus = User.STATUS.ONLINE;
+                existing.user.setStatus(currentStatus);
+            }
+
+            boolean statusUpdated = userDAO.updateUserStatus(
+                existing.user.getUserId(),
+                currentStatus
+            );
+
+            System.out.println(
+                "[STATUS] Reconnect " + existing.user.getUsername()
+                + " -> " + currentStatus
+                + ", DB updated=" + statusUpdated
+            );
+
+            encoder.replyLogin(key, "LOGIN_SUCCESS");
+            encoder.setClientSessionId(key, existing.sessionId);
+            existing.sendRestoreState();        // xem mục 2.4
+            return;
         }
         else{
             loginStatus = "LOGIN_SUCCESS";
@@ -91,10 +143,22 @@ public class MasterController {
             encoder.setClientSessionId(key, maxSessionId);
             
             user.setStatus(User.STATUS.ONLINE);
-            ClientState state = (ClientState) key.attachment();
-            addRepresentative(user, maxSessionId, state);         
-            state.setSessionId(maxSessionId);
 
+            // Cập nhật trạng thái online vào MySQL
+            boolean statusUpdated = userDAO.updateUserStatus(
+                user.getUserId(),
+                User.STATUS.ONLINE
+            );
+
+            System.out.println(
+                "[STATUS] Login " + user.getUsername()
+                + " -> online, DB updated=" + statusUpdated
+            );
+
+            ClientState state = (ClientState) key.attachment();
+            addRepresentative(user, maxSessionId, state);
+
+            state.setSessionId(maxSessionId);
             maxSessionId++;
             
             System.out.println("User "+user.getUsername()+" logged in");
@@ -132,6 +196,7 @@ public class MasterController {
             
             representative.replyAttach();
             representative.resetSchedule();
+            representative.sendRestoreState();
         }
         else{
             encoder.replyLogout(key);

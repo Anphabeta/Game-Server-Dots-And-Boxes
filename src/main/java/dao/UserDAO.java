@@ -1,10 +1,15 @@
 package dao;
 
-import model.User;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 
+import model.LeaderboardEntry;
+import model.User;
 /**
  * Data Access Object cho bảng User
  * @author Phạm Tiến Dương
@@ -208,6 +213,46 @@ public class UserDAO {
         return false;
     }
 
+    public int resetStaleUserStatuses() {
+        Connection conn = null;
+        PreparedStatement ps = null;
+
+        try {
+            conn = dbConnection.getConnection();
+
+            String sql =
+                "UPDATE `User` SET status = ? " +
+                "WHERE status IN (?, ?, ?)";
+
+            ps = conn.prepareStatement(sql);
+            ps.setString(1, User.STATUS.OFFLINE);
+            ps.setString(2, User.STATUS.ONLINE);
+            ps.setString(3, User.STATUS.INGAME);
+            ps.setString(4, User.STATUS.QUEUING);
+
+            int affectedRows = ps.executeUpdate();
+
+            System.out.println(
+                "[STATUS] Startup reset: "
+                + affectedRows
+                + " stale users marked offline"
+            );
+
+            return affectedRows;
+
+        } catch (SQLException e) {
+            System.err.println(
+                "[STATUS] Failed to reset stale users: "
+                + e.getMessage()
+            );
+            e.printStackTrace();
+            return -1;
+
+        } finally {
+            closeResources(null, ps, conn);
+        }
+    }
+
     /**
      * Cập nhật ranking của user
      */
@@ -348,6 +393,58 @@ public class UserDAO {
         }
 
         return users;
+    }
+
+    public List<LeaderboardEntry> getLeaderboard(int limit) {
+        List<LeaderboardEntry> entries = new ArrayList<>();
+
+        if (limit <= 0) {
+            return entries;
+        }
+
+        Connection conn = null;
+        PreparedStatement ps = null;
+        ResultSet rs = null;
+
+        try {
+            conn = dbConnection.getConnection();
+
+            String sql =
+                "SELECT u.userId, u.username, u.displayName, u.ranking, " +
+                "COALESCE(s.totalWins, 0) AS totalWins " +
+                "FROM `User` u " +
+                "LEFT JOIN `UserStats` s ON s.userId = u.userId " +
+                "ORDER BY u.ranking DESC, u.userId ASC " +
+                "LIMIT ?";
+
+            ps = conn.prepareStatement(sql);
+            ps.setInt(1, limit);
+
+            rs = ps.executeQuery();
+
+            while (rs.next()) {
+                LeaderboardEntry entry = new LeaderboardEntry(
+                    entries.size() + 1,
+                    rs.getInt("userId"),
+                    rs.getString("username"),
+                    rs.getString("displayName"),
+                    rs.getInt("ranking"),
+                    rs.getLong("totalWins")
+                );
+
+                entries.add(entry);
+            }
+
+        } catch (SQLException e) {
+            System.err.println(
+                "Error in getLeaderboard: " + e.getMessage()
+            );
+            e.printStackTrace();
+        } finally {
+            closeResources(rs, ps, conn);
+        }
+
+        return entries;
     }
 
     /**

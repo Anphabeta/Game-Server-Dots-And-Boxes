@@ -1,12 +1,13 @@
 package request;
 
-import controller.MasterController;
 import java.nio.channels.SelectionKey;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
+
+import controller.MasterController;
 import network.NioServer;
 
 public class Decoder {
@@ -58,6 +59,7 @@ public class Decoder {
         individualMap.add("MAKE_MOVE");
         individualMap.add("SURRENDER");
         individualMap.add("GET_USERS_AVAILABLE_LIST");
+        individualMap.add("GET_LEADERBOARD");  
     }
 
     public Decoder(){

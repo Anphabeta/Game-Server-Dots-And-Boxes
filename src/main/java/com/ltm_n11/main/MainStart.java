@@ -1,9 +1,8 @@
 package com.ltm_n11.main;
 
-import controller.MasterController;
-import dao.MatchDAO;
-import dao.UserDAO;
 import java.io.IOException;
+
+import controller.MasterController;
 import network.NioServer;
 import request.Decoder;
 import request.Encoder;
@@ -23,11 +22,15 @@ public class MainStart {
         controller.setEncoder(encoder);
     }
     
-    public static void run(){
+    public static void run() {
         try {
+            // Reset trạng thái của các phiên từ lần chạy trước
+            controller.resetStaleUserStatuses();
+
+            // Bắt đầu các luồng server sau khi reset
             comunication.start();
-            
             nioServer.listenSocket();
+
         } catch (IOException ex) {
             ex.printStackTrace();
         }
