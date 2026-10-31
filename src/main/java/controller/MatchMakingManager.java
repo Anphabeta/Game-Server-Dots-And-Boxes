@@ -1,16 +1,17 @@
 package controller;
 
-import dao.MatchDAO;
-import dao.UserDAO;
-import game.Room;
-import game.RoomCodeUtil;
-import game.RoomManager;
 import java.sql.Timestamp;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Random;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
+
+import dao.MatchDAO;
+import dao.UserDAO;
+import game.Room;
+import game.RoomCodeUtil;
+import game.RoomManager;
 import model.Match;
 import model.User;
 import request.Encoder;
@@ -336,20 +337,36 @@ public class MatchMakingManager {
         }
     }
     
-    public void matchInvitation(UserRepresentative owner, UserRepresentative other, String boardSize){
-        if(owner == null || !isPlayerActive(owner)){
-            encoder.responseInvitation(owner.state, "FAIL");
-            encoder.replyResponseInvite(other.state, "FAIL");
+    public void matchInvitation(
+            UserRepresentative owner,
+            UserRepresentative other,
+            String boardSize) {
+
+        // Kiểm tra cả hai người chơi trước khi tạo trận
+        boolean ownerActive = owner != null && isPlayerActive(owner);
+        boolean otherActive = other != null && isPlayerActive(other);
+
+        // Nếu một trong hai người chơi không hợp lệ thì không tạo trận
+        if (!ownerActive || !otherActive) {
+
+            if (encoder != null) {
+
+                // Thông báo cho người nhận lời mời nếu còn state
+                if (owner != null && owner.state != null) {
+                    encoder.responseInvitation(owner.state, "FAIL");
+                }
+
+                // Thông báo cho người gửi lời mời nếu còn state
+                if (other != null && other.state != null) {
+                    encoder.replyResponseInvite(other.state, "FAIL");
+                }
+            }
+
             return;
         }
-        
-        if(other == null || !isPlayerActive(other)){
-            encoder.responseInvitation(owner.state, "FAIL");
-            encoder.replyResponseInvite(other.state, "FAIL");
-            return;
-        }
-        
-        createMatch(owner, other, boardSize);      
+
+        // Chỉ tạo trận khi cả hai người chơi đều hợp lệ
+        createMatch(owner, other, boardSize);
     }
 
     public synchronized int getQueueSize(String boardSize) {

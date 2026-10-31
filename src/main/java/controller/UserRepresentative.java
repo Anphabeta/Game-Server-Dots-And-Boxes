@@ -186,12 +186,14 @@ public class UserRepresentative {
     }
 
     private void getUserDetail(String params) {
-        String userDetail = String.format("%s;%s;%d;%s", 
-                user.getUsername(), 
+        String userDetail = String.format("%s;%s;%d;%s;%d",
+                user.getUsername(),
                 user.getDisplayName(),
                 user.getRanking(),
-                user.getStatus()
+                user.getStatus(),
+                user.getUserId()
         );
+
         state.writeFrame(String.format("RETURN_USER_DETAIL,,%s", userDetail));
     }
     
@@ -375,16 +377,25 @@ public class UserRepresentative {
      * @param sender : Là representative của người gửi.<br>
      * 
      */
-    void invite(UserRepresentative sender, String broadSize) {
-        encoder.sendInvitation(state, sender.user.getUserId(), sender.user.getDisplayName(), broadSize);
-        
-        if(user.getStatus().equals("online")){
+    void invite(UserRepresentative sender, String boardSize) {
+        if (sender == null) {
+            return;
+        }
+
+        if (User.STATUS.ONLINE.equalsIgnoreCase(user.getStatus())) {
+            encoder.sendInvitation(
+                state,
+                sender.user.getUserId(),
+                sender.user.getDisplayName(),
+                boardSize
+            );
+
             sender.replyInvite("SUCCESS");
         }
-        else if(user.getStatus().equals("ingame")){
+        else if (User.STATUS.INGAME.equalsIgnoreCase(user.getStatus())) {
             sender.replyInvite("USER_INGAME");
         }
-        else{
+        else {
             sender.replyInvite("USER_UNAVAILABLE");
         }
     }
