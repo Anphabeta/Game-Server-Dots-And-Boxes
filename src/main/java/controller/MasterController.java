@@ -285,6 +285,19 @@ public class MasterController {
     public void findRoom(SelectionKey key, int orgUserId, String roomCode){
         UserRepresentative user = representativeManager.getByUserId(orgUserId);
         if (user == null) {
+            System.out.println(
+                "Find room failed: User not found. userId = " + orgUserId
+            );
+
+            Object attachment = key.attachment();
+
+            if (attachment instanceof ClientState) {
+                ClientState clientState = (ClientState) attachment;
+                encoder.replyFindRoom(clientState, "FAIL");
+            } else {
+                System.err.println("Cannot find ClientState from SelectionKey.");
+            }
+
             return;
         }
 

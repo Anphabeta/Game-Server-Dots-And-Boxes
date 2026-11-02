@@ -1,5 +1,7 @@
 package controller;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -12,7 +14,9 @@ import game.MoveResult;
 import game.Room;
 import game.RoomManager;
 import model.LeaderboardEntry;
+import model.MatchEntity;
 import model.User;
+import model.UserHistoryMatch;
 import network.ClientState;
 import request.Encoder;
 
@@ -39,7 +43,8 @@ public class UserRepresentative {
         individualMap.put("MAKE_MOVE", UserRepresentative::makeMove);
         individualMap.put("SURRENDER", UserRepresentative::surrender);
         individualMap.put("GET_USERS_AVAILABLE_LIST", UserRepresentative::getUsersAvailableList);    
-        individualMap.put("GET_LEADERBOARD", UserRepresentative::getLeaderboard); 
+        individualMap.put("GET_LEADERBOARD", UserRepresentative::getLeaderboard);
+        individualMap.put("GET_MATCH_HISTORY", UserRepresentative::getMatchHistory); 
     }
 
     public UserRepresentative(int sessionId, User user, ClientState state, Consumer<Integer> deleteItself) {
@@ -186,15 +191,62 @@ public class UserRepresentative {
     }
 
     private void getUserDetail(String params) {
-        String userDetail = String.format("%s;%s;%d;%s;%d",
+        // Thông tin hàng đợi quick match
+        String assignedSize = matchMakingManager != null
+                ? matchMakingManager.getAssignedSize(this)
+                : null;
+
+        boolean isInQuickMatchQueue = assignedSize != null;
+
+        String queuedBoardSize = isInQuickMatchQueue
+                ? assignedSize
+                : "";
+
+        // Thống kê trận đấu thực tế từ database
+        int totalMatches = 0;
+        int totalWins = 0;
+
+        if (matchDAO != null) {
+            totalMatches = matchDAO.countTotalMatchesByUserId(user.getUserId());
+            totalWins = matchDAO.countWinsByUserId(user.getUserId());
+        }
+
+        /*
+        * Format:
+        * username;
+        * displayName;
+        * ranking;
+        * status;
+        * userId;
+        * isInQuickMatchQueue;
+        * queuedBoardSize;
+        * totalMatches;
+        * totalWins
+        */
+        String userDetail = String.format(
+                "%s;%s;%d;%s;%d;%b;%s;%d;%d",
                 user.getUsername(),
                 user.getDisplayName(),
                 user.getRanking(),
                 user.getStatus(),
-                user.getUserId()
+                user.getUserId(),
+                isInQuickMatchQueue,
+                queuedBoardSize,
+                totalMatches,
+                totalWins
         );
 
-        state.writeFrame(String.format("RETURN_USER_DETAIL,,%s", userDetail));
+        System.out.println(
+                "[USER DETAIL] " + user.getUsername()
+                + " | Queue: " + isInQuickMatchQueue
+                + " | Board: " + queuedBoardSize
+                + " | Played: " + totalMatches
+                + " | Wins: " + totalWins
+        );
+
+        state.writeFrame(
+                String.format("RETURN_USER_DETAIL,,%s", userDetail)
+        );
     }
     
     private void getLeaderboard(String params) {
@@ -212,6 +264,145 @@ public class UserRepresentative {
         );
 
         encoder.replyLeaderboard(state, entries);
+    }
+
+    // Mã hóa tên người chơi để không xung đột với ký tự phân cách protocol.
+    private String encodeHistoryText(String value) {
+        String safeValue = value != null ? value : "";
+
+        return Base64.getUrlEncoder()
+                .withoutPadding()
+                .encodeToString(safeValue.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private void getMatchHistory(String params) {
+        if (matchDAO == null || encoder == null ||
+                state == null || !state.isValid()) {
+            System.err.println(
+                "[MATCH HISTORY] Missing DAO, Encoder or ClientState for "
+                + user.getUsername()
+            );
+            return;
+        }
+
+        // Client chỉ yêu cầu số lượng bản ghi, không được tự truyền userId.
+        int limit = 20;
+
+        try {
+            if (params != null && !params.trim().isEmpty()) {
+                limit = Integer.parseInt(params.trim());
+            }
+        } catch (NumberFormatException e) {
+            limit = 20;
+        }
+
+        // Giới hạn số bản ghi để tránh truy vấn quá lớn.
+        limit = Math.max(1, Math.min(limit, 100));
+
+        List<UserHistoryMatch> histories =
+                matchDAO.getHistoryByUserId(user.getUserId(), limit);
+
+        StringBuilder payload = new StringBuilder();
+        int count = 0;
+
+        for (UserHistoryMatch history : histories) {
+            MatchEntity match =
+                    matchDAO.getMatchEntityById(history.getMatchId());
+
+            if (match == null) {
+                continue;
+            }
+
+            int currentUserId = user.getUserId();
+
+            boolean isPlayer1 = match.getPlayer1Id() == currentUserId;
+            boolean isPlayer2 = match.getPlayer2Id() == currentUserId;
+
+            // Bỏ qua dữ liệu không thuộc tài khoản hiện tại.
+            if (!isPlayer1 && !isPlayer2) {
+                continue;
+            }
+
+            String opponentUsername;
+            String opponentDisplayName;
+            int scoreSelf;
+            int scoreOpponent;
+
+            if (isPlayer1) {
+                opponentUsername = match.getPlayer2Username();
+                opponentDisplayName = match.getPlayer2DisplayName();
+
+                scoreSelf = match.getPlayer1Score();
+                scoreOpponent = match.getPlayer2Score();
+            } else {
+                opponentUsername = match.getPlayer1Username();
+                opponentDisplayName = match.getPlayer1DisplayName();
+
+                scoreSelf = match.getPlayer2Score();
+                scoreOpponent = match.getPlayer1Score();
+            }
+
+            if (opponentUsername == null) {
+                opponentUsername = "";
+            }
+
+            if (opponentDisplayName == null ||
+                    opponentDisplayName.trim().isEmpty()) {
+                opponentDisplayName = opponentUsername;
+            }
+
+            String boardSize = match.getBoardSize();
+
+            if (boardSize == null || boardSize.trim().isEmpty()) {
+                boardSize = "3x3";
+            }
+
+            // Ưu tiên thời gian của bản ghi lịch sử.
+            java.sql.Timestamp timestamp = history.getTime();
+
+            if (timestamp == null) {
+                timestamp = match.getEndTime() != null
+                        ? match.getEndTime()
+                        : match.getStartTime();
+            }
+
+            long timeMillis = timestamp != null
+                    ? timestamp.getTime()
+                    : 0L;
+
+            if (payload.length() > 0) {
+                payload.append("|");
+            }
+
+            /*
+            * Format mỗi trận:
+            * matchId;
+            * opponentUsernameBase64;
+            * opponentDisplayNameBase64;
+            * result;
+            * scoreSelf;
+            * scoreOpponent;
+            * boardSize;
+            * timeMillis
+            */
+            payload.append(match.getMatchId()).append(";")
+                    .append(encodeHistoryText(opponentUsername)).append(";")
+                    .append(encodeHistoryText(opponentDisplayName)).append(";")
+                    .append(history.getResult()).append(";")
+                    .append(scoreSelf).append(";")
+                    .append(scoreOpponent).append(";")
+                    .append(boardSize).append(";")
+                    .append(timeMillis);
+
+            count++;
+        }
+
+        System.out.println(
+            "[MATCH HISTORY] Sent " + count +
+            " records for " + user.getUsername()
+        );
+
+        encoder.replyMatchHistory(state, payload.toString());
     }
 
     public void responseInvitation(String status) {
@@ -273,20 +464,41 @@ public class UserRepresentative {
      * - Nếu trạng thái người dùng không phải QUEUING -> phản hồi lại client NOT_IN_QUEUE -> hủy hàm<br>
      */
     private void cancelQuickMatch(String params) {
-        if (matchMakingManager == null) {
+        if (encoder == null || state == null || !state.isValid()) {
+            System.err.println(
+                "[CANCEL QUICK MATCH] Invalid client state for "
+                + user.getUsername()
+            );
             return;
         }
 
-        if (User.STATUS.QUEUING.equalsIgnoreCase(user.getStatus())) {
-            matchMakingManager.removePlayer(this);
-            user.setStatus(User.STATUS.ONLINE);
-            if (encoder != null) {
-                encoder.replyCancelQuickMatch(state, "SUCCESS");
-            }
+        if (matchMakingManager == null) {
+            System.err.println(
+                "[CANCEL QUICK MATCH] MatchMakingManager is null"
+            );
+            encoder.replyCancelQuickMatch(state, "FAIL");
+            return;
+        }
+
+        // Thực sự xóa người chơi khỏi hàng đợi
+        boolean removed = matchMakingManager.removePlayer(this);
+
+        if (removed) {
+            // removePlayer() đã tự chuyển trạng thái về ONLINE
+            // và cập nhật trạng thái trong database.
+            System.out.println(
+                "[CANCEL QUICK MATCH] Successfully removed "
+                + user.getUsername() + " from queue"
+            );
+
+            encoder.replyCancelQuickMatch(state, "SUCCESS");
         } else {
-            if (encoder != null) {
-                encoder.replyCancelQuickMatch(state, "NOT_IN_QUEUE");
-            }
+            System.out.println(
+                "[CANCEL QUICK MATCH] "
+                + user.getUsername() + " was not in queue"
+            );
+
+            encoder.replyCancelQuickMatch(state, "NOT_IN_QUEUE");
         }
     }
 

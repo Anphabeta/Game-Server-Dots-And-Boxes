@@ -115,6 +115,17 @@ public class Encoder {
         state.writeFrame(String.format("RETURN_USER_DETAIL,,%s", userDetail));
     }
 
+    public void replyMatchHistory(ClientState state, String payload) {
+        if (state == null || !state.isValid()) {
+            return;
+        }
+
+        state.writeFrame(
+            String.format("REPLY_MATCH_HISTORY,,%s",
+                payload != null ? payload : "")
+        );
+    }
+
     public void replyLeaderboard(
             ClientState state,
             List<LeaderboardEntry> entries) {

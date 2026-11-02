@@ -60,6 +60,7 @@ public class Decoder {
         individualMap.add("SURRENDER");
         individualMap.add("GET_USERS_AVAILABLE_LIST");
         individualMap.add("GET_LEADERBOARD");  
+        individualMap.add("GET_MATCH_HISTORY");
     }
 
     public Decoder(){
@@ -178,6 +179,7 @@ public class Decoder {
             
             controller.shareRoom(pair.key, ownerUserId, boardSize);
         } catch (Exception e) {
+            System.out.println("Invalid params");
         }
     }
 
@@ -186,6 +188,7 @@ public class Decoder {
             int ownerUserId = Integer.parseInt(pair.params.trim());
             controller.cancelShareRoom(pair.key, ownerUserId);
         } catch (Exception e) {
+            System.out.println("Invalid params");
         }
     }
 
@@ -197,6 +200,7 @@ public class Decoder {
             
             controller.findRoom(pair.key, orgUserId, roomCode);
         } catch (Exception e) {
+            System.out.println("Invalid params");
         }
     }
     
